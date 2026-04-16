@@ -48,6 +48,7 @@ The script will:
 - Generate GitHub Actions workflows
 - Create all GitHub labels
 - Write a `CHARTER.md` for your team
+- Optionally set up the Command Center web UI
 
 ---
 
@@ -152,13 +153,74 @@ gh run list --workflow "my-team-issue-handler" --limit 3
 
 ---
 
+## Step 8 — Deploy the Command Center (Optional)
+
+The setup script (Step 2) offers to generate a web dashboard for your team. If you skipped it, run:
+
+```bash
+python templates/agent-team/setup_agent_team.py --config team_config.json
+# Answer Y when asked about the web UI
+```
+
+This creates `customers/my_team/web_ui/index.html` — a single-file SPA with:
+- Agent status cards
+- Chat to the Azure Functions backend
+- GitHub Issues feed + `needs-you` alerts
+- Outcomes panel
+
+### Deploy Option A — GitHub Pages (Free, Easiest)
+
+```bash
+# The setup script generates .github/workflows/my_team_deploy_web.yml
+# Enable Pages in Settings → Pages → Source: GitHub Actions
+git add customers/my_team/web_ui/ .github/workflows/
+git commit -m "feat: add team web UI"
+git push
+```
+
+### Deploy Option B — Azure Static Web Apps (Free Tier)
+
+```bash
+az staticwebapp create \
+  --name my-team-command-center \
+  --resource-group myRG \
+  --location "eastus2" \
+  --sku Free \
+  --source https://github.com/owner/repo \
+  --branch main \
+  --app-location "customers/my_team/web_ui" \
+  --output-location "."
+
+# Copy the deployment token → repo Settings → Secrets → AZURE_STATIC_WEB_APPS_API_TOKEN
+```
+
+### Deploy Option C — Azure Blob Static Website (~$0.01/month)
+
+```bash
+az storage blob service-properties update \
+  --account-name mystorageaccount \
+  --static-website \
+  --index-document index.html
+
+az storage blob upload \
+  --account-name mystorageaccount \
+  --container-name '$web' \
+  --name index.html \
+  --file customers/my_team/web_ui/index.html \
+  --overwrite
+```
+
+See [`web_ui/DEPLOY.md`](web_ui/DEPLOY.md) for full comparison table, cost breakdown, and troubleshooting.
+
+---
+
 ## Modes
 
 ### CoE Mode (default)
 Full autonomous operation:
 - Scheduled standup, wrap-up, and hourly pulse runs
 - Agents process backlog, post updates, flag decisions
-- Bill reviews `needs-bill` issues and comments to unblock
+- Owner reviews `needs-you` issues and comments to unblock
 
 ### Project Mode
 Lightweight, manual-trigger only:
@@ -204,6 +266,9 @@ customers/my_team/
     README.md                       ← Add context cards here
   outcomes/
     .gitkeep                        ← Outcome logs written here
+  web_ui/
+    index.html                      ← Command Center dashboard (generated)
+    DEPLOY.md                       ← Hosting options guide
   CHARTER.md                        ← Team mission + pipeline
 ```
 
@@ -212,6 +277,7 @@ customers/my_team/
   my_team_manual_run.yml            ← Trigger any action manually
   my_team_issue_handler.yml         ← Fires on agent-task label / owner feedback
   my_team_scheduled_pulse.yml       ← Autonomous hourly/daily runs (CoE mode)
+  my_team_deploy_web.yml            ← Web UI deployment (if enabled)
 ```
 
 ---
@@ -232,6 +298,10 @@ customers/my_team/
 **Health check returns empty agent list:**
 - Uncomment agent imports + instantiations in the orchestrator
 
+**Web UI shows no agents / wrong team name:**
+- Re-run `setup_agent_team.py` and answer Y to the web UI prompt
+- Or manually replace `{{PLACEHOLDERS}}` in `web_ui/index_template.html`
+
 ---
 
 ## Reference
@@ -239,5 +309,7 @@ customers/my_team/
 - Working example: `customers/mfg_coe/`
 - Persona templates: `templates/agent-team/agents/`
 - Workflow templates: `templates/agent-team/workflows/`
+- Web UI template: `templates/agent-team/web_ui/index_template.html`
 - Config reference: `templates/agent-team/team_config.template.json`
 - Persona guide: `templates/agent-team/PERSONAS.md`
+- Deployment guide: `templates/agent-team/web_ui/DEPLOY.md`
