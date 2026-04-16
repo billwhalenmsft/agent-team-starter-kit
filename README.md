@@ -4,7 +4,7 @@
 
 Deploy a team of specialized AI personas that run autonomously via GitHub Actions, use GitHub Issues as a work queue, and collaborate through an outcome-first delivery pipeline — all wired to Azure Functions + OpenAI.
 
-Built on the [RAPP pipeline](https://github.com/kody-w/CommunityRAPP) framework by [Kody Wilson](https://github.com/kody-w).
+Built on the [RAPP pipeline](https://github.com/kody-w/CommunityRAPP) framework by [Kody Wildfeuer](https://github.com/kody-w).
 
 ---
 
