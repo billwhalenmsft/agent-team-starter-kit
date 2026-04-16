@@ -42,6 +42,7 @@ python setup_agent_team.py
 | **+8 optional personas** | UX, QA, Security, Data Analyst, Content, and more |
 | **GitHub Actions** | 3 workflows — manual run, issue handler, scheduled pulse |
 | **Outcome Validator** | Nothing closes without verified outcomes |
+| **Command Center** | Web UI dashboard — chat, agent status, outcomes, GitHub feed |
 
 ---
 
@@ -83,6 +84,7 @@ The interactive setup will ask you:
 - **Your GitHub username** (for the feedback loop)
 - **Which personas** to include
 - **Mode**: `coe` (scheduled, autonomous) or `project` (manual only)
+- **Web UI**: whether to set up the Command Center dashboard
 
 ### 2. Set GitHub Secrets
 
@@ -106,27 +108,57 @@ gh workflow run "my-team-manual-run" --repo owner/repo -f action=health_check
 2. Add your team label + `raw-idea`
 3. When ready: add `agent-task` → automation fires
 
+### 5. Deploy the Command Center (Optional)
+The setup script generates a single-file web dashboard at `web_ui/index.html`. Three free hosting options:
+
+| Option | Cost | Steps |
+|--------|------|-------|
+| **GitHub Pages** | Free | Settings → Pages → Source: GitHub Actions |
+| **Azure Static Web Apps** | Free tier | `az staticwebapp create` + add deploy token secret |
+| **Azure Blob Storage** | ~$0.01/mo | `az storage blob service-properties update --static-website` |
+
+See [`web_ui/DEPLOY.md`](web_ui/DEPLOY.md) for full instructions.
+
 ---
 
 ## 📁 Files
 
 ```
 agent-team-starter-kit/
-  setup_agent_team.py          # Interactive setup script
-  team_config.template.json    # Configuration template
-  install.sh                   # Mac/Linux one-liner installer
-  install.ps1                  # Windows one-liner installer
-  QUICK_START.md               # Step-by-step guide
-  PERSONAS.md                  # Persona reference + use-case combos
-  CHARTER_TEMPLATE.md          # Fill-in-the-blank team charter
+  setup_agent_team.py              # Interactive setup script
+  team_config.template.json        # Configuration template
+  install.sh                       # Mac/Linux one-liner installer
+  install.ps1                      # Windows one-liner installer
+  QUICK_START.md                   # Step-by-step guide
+  PERSONAS.md                      # Persona reference + use-case combos
+  CHARTER_TEMPLATE.md              # Fill-in-the-blank team charter
   agents/
-    _base_persona_template.py  # Persona scaffold
-    orchestrator_template.py   # Orchestrator with full pipeline
+    _base_persona_template.py      # Persona scaffold
+    orchestrator_template.py       # Orchestrator with full pipeline
   workflows/
-    manual_run_template.yml    # Trigger any action manually
-    issue_handler_template.yml # Fires on agent-task label
-    scheduled_pulse_template.yml  # Autonomous cron schedules
+    manual_run_template.yml           # Trigger any action manually
+    issue_handler_template.yml        # Fires on agent-task label
+    scheduled_pulse_template.yml      # Autonomous cron schedules
+    deploy_web_github_pages_template.yml  # GitHub Pages deployment
+    deploy_web_azure_swa_template.yml     # Azure Static Web Apps deployment
+  web_ui/
+    index_template.html            # Command Center SPA (config-driven)
+    DEPLOY.md                      # Hosting guide — 3 options
 ```
+
+---
+
+## 🖥️ Command Center Web UI
+
+The included web dashboard gives your team a visual hub:
+
+- **Agent roster** — live status cards for each persona
+- **Chat** — natural language to the Azure Functions backend
+- **GitHub feed** — open issues, `needs-you` alerts, recent activity
+- **Outcomes panel** — track KPIs and validated deliverables
+- **Knowledge base** — quick access to SOPs and context cards
+
+The setup script injects your team config (repo, team name, endpoint URL, agent list) into the template automatically. All values are driven from `{{PLACEHOLDER}}` tokens — nothing is hardcoded.
 
 ---
 
