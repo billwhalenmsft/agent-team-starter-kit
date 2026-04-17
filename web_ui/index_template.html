@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{TEAM_NAME}} — Command Center</title>
+  <title>Bots in Blazers — Mfg CoE Command Center</title>
   <link rel="icon" type="image/png" href="logo-avatar.png"/>
   <style>
     /* ── Reset & Variables ─────────────────────────────────────────────── */
@@ -34,6 +34,9 @@
     .topbar { grid-column: 1 / -1; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 12px; }
     .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px 0; grid-row: 3; }
     .main { overflow-y: auto; padding: 24px; grid-row: 3; }
+    .main.chat-mode { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
+    #view-chat { display: none; flex-direction: column; }
+    #view-chat.active { display: flex; flex: 1; min-height: 0; height: 100%; }
 
     /* ── Topbar ────────────────────────────────────────────────────────── */
     .topbar .logo { display: flex; align-items: center; gap: 10px; }
@@ -100,39 +103,235 @@
     .kpi-delta.warn { color: var(--yellow); }
 
     /* ── Forum ─────────────────────────────────────────────────────────── */
-    .forum-topic { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
-    .forum-topic:hover .forum-topic-title { color: var(--accent); }
-    .forum-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-    .forum-body { flex: 1; }
-    .forum-topic-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-    .forum-topic-meta { font-size: 11px; color: var(--text2); }
-    .forum-stats { text-align: right; font-size: 11px; color: var(--text2); flex-shrink: 0; }
-    .forum-new-btn { background: var(--accent2); color: white; border: none; border-radius: 6px; padding: 7px 16px; cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+    .forum-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .forum-new-btn { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: white; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 13px; font-weight: 600; flex-shrink: 0; transition: all .2s; }
+    .forum-new-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(88,166,255,.3); }
+    .forum-filter-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .forum-filter-btn { background: var(--bg3); border: 1px solid var(--border); border-radius: 16px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: all .15s; color: var(--text2); }
+    .forum-filter-btn.active, .forum-filter-btn:hover { background: rgba(88,166,255,.15); border-color: var(--accent2); color: var(--accent2); }
+    .forum-thread { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; transition: border-color .15s; }
+    .forum-thread:hover { border-color: rgba(88,166,255,.3); }
+    .forum-thread-header { display: flex; gap: 12px; padding: 14px 16px; cursor: pointer; align-items: flex-start; }
+    .forum-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .forum-body { flex: 1; min-width: 0; }
+    .forum-topic-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .forum-topic-meta { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .forum-cat-badge { border-radius: 10px; padding: 2px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .forum-stats { text-align: right; font-size: 11px; color: var(--text2); flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .forum-reply-count { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+    .forum-thread-body { display: none; border-top: 1px solid var(--border); padding: 16px; background: var(--bg2); }
+    .forum-thread-body.open { display: block; }
+    .forum-post-content { font-size: 13px; line-height: 1.65; color: var(--text); margin-bottom: 16px; white-space: pre-wrap; }
+    .forum-comments { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .forum-comment { display: flex; gap: 10px; }
+    .forum-comment-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; margin-top: 2px; }
+    .forum-comment-bubble { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .forum-comment-meta { font-size: 11px; color: var(--text2); margin-bottom: 5px; }
+    .forum-comment-text { font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+    .forum-reply-box { display: flex; gap: 8px; margin-top: 4px; }
+    .forum-reply-input { flex: 1; background: var(--bg3); border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 13px; color: var(--text); font-size: 12px; outline: none; resize: none; height: 70px; font-family: inherit; transition: border-color .2s; }
+    .forum-reply-input:focus { border-color: var(--accent2); }
+    .forum-reply-send { background: var(--accent2); color: white; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 12px; font-weight: 600; align-self: flex-end; transition: all .15s; }
+    .forum-reply-send:hover { background: var(--accent); }
+    .forum-reply-send:disabled { opacity: .45; cursor: not-allowed; }
+    /* New Topic Modal */
+    .forum-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 500; display: flex; align-items: center; justify-content: center; animation: fadeIn .15s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .forum-modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; width: min(560px, 94vw); padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .forum-modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+    .forum-modal-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .forum-modal-field label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+    .forum-modal-input, .forum-modal-select, .forum-modal-textarea { background: var(--bg3); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 13px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; transition: border-color .2s; }
+    .forum-modal-input:focus, .forum-modal-select:focus, .forum-modal-textarea:focus { border-color: var(--accent2); }
+    .forum-modal-select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .forum-modal-select option { background: #1c2128; }
+    .forum-modal-textarea { resize: vertical; min-height: 100px; line-height: 1.55; }
+    .forum-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .forum-modal-cancel { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13px; }
+    .forum-modal-submit { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: white; border: none; border-radius: 8px; padding: 9px 20px; cursor: pointer; font-size: 13px; font-weight: 700; transition: all .2s; }
+    .forum-modal-submit:disabled { opacity: .4; cursor: not-allowed; }
 
     /* ── Chat ──────────────────────────────────────────────────────────── */
-    .chat-container { display: flex; flex-direction: column; height: calc(100vh - 120px); }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-    .chat-bubble { max-width: 70%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
-    .chat-bubble.bot { background: var(--bg3); border: 1px solid var(--border); align-self: flex-start; }
-    .chat-bubble.user { background: var(--accent2); align-self: flex-end; }
-    .chat-bubble .from { font-size: 11px; font-weight: 700; margin-bottom: 4px; color: var(--text2); }
-    .chat-input-row { display: flex; gap: 8px; padding: 16px; border-top: 1px solid var(--border); }
-    .chat-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 13px; outline: none; }
-    .chat-input:focus { border-color: var(--accent2); }
-    .chat-send { background: var(--accent2); color: white; border: none; border-radius: 8px; padding: 10px 18px; cursor: pointer; font-size: 13px; font-weight: 600; }
-    .chat-send:hover { background: var(--accent); }
-    .agent-selector { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-    .agent-chip { background: var(--bg3); border: 1px solid var(--border); border-radius: 16px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: all .15s; }
-    .agent-chip.active { background: rgba(88,166,255,.15); border-color: var(--accent); color: var(--accent); }
+    .chat-container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .chat-bubble { max-width: 76%; padding: 12px 16px; border-radius: 14px; font-size: 13px; line-height: 1.65; }
+    .chat-bubble.bot { background: var(--bg3); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .chat-bubble.user { background: linear-gradient(135deg, var(--accent2), var(--accent)); align-self: flex-end; color: #fff; border-bottom-right-radius: 4px; box-shadow: 0 2px 12px rgba(88,166,255,0.3); }
+    .chat-bubble .from { font-size: 11px; font-weight: 700; margin-bottom: 6px; color: var(--text2); display: flex; align-items: center; gap: 5px; }
+    .chat-bubble.user .from { color: rgba(255,255,255,0.75); }
+    /* Markdown rendering inside bot bubbles */
+    .chat-bubble.bot h2,.chat-bubble.bot h3,.chat-bubble.bot h4 { margin: 10px 0 4px; color: var(--text); }
+    .chat-bubble.bot h2 { font-size: 15px; }
+    .chat-bubble.bot h3 { font-size: 13px; }
+    .chat-bubble.bot code { background: var(--bg2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; }
+    .chat-bubble.bot pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
+    .chat-bubble.bot pre code { background: none; border: none; padding: 0; }
+    .chat-bubble.bot ul,.chat-bubble.bot ol { padding-left: 18px; margin: 6px 0; }
+    .chat-bubble.bot li { margin: 3px 0; }
+    .chat-bubble.bot strong { color: var(--text); }
+    .chat-bubble.bot hr { border-color: var(--border); margin: 10px 0; }
+    .chat-bubble.bot blockquote { border-left: 3px solid var(--accent2); padding-left: 10px; color: var(--text2); margin: 6px 0; }
+    .chat-bubble.bot a { color: var(--accent); }
+    /* Typing indicator */
+    .chat-typing { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; border-bottom-left-radius: 4px; align-self: flex-start; }
+    .chat-typing .from { font-size: 11px; font-weight: 700; color: var(--text2); white-space: nowrap; }
+    .typing-dots { display: flex; gap: 4px; }
+    .typing-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--text2); animation: typing-bounce 1.2s infinite; }
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes typing-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+    /* Create Issue button in chat */
+    .chat-create-issue { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; background: rgba(35,134,54,0.12); border: 1px solid rgba(35,134,54,0.35); color: var(--green); border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .chat-create-issue:hover { background: rgba(35,134,54,0.22); transform: translateY(-1px); }
+
+    /* ── Chat Input Bar ─────────────────────────────────────────────────── */
+    .chat-input-bar {
+      padding: 14px 20px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .chat-input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .chat-input {
+      flex: 1; background: var(--bg3); border: 1.5px solid var(--border);
+      border-radius: 12px; padding: 12px 16px; color: var(--text);
+      font-size: 13px; outline: none; resize: none; height: 44px; max-height: 120px;
+      overflow-y: auto; line-height: 1.5; transition: border-color .2s, box-shadow .2s;
+      font-family: inherit;
+    }
+    .chat-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(88,166,255,0.12); }
+    .chat-input::placeholder { color: var(--text2); }
+    .chat-send {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      color: white; border: none; border-radius: 12px;
+      width: 44px; height: 44px; cursor: pointer;
+      font-size: 18px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all .2s; box-shadow: 0 2px 8px rgba(88,166,255,0.3);
+    }
+    .chat-send:hover { transform: translateY(-1px) scale(1.05); box-shadow: 0 4px 16px rgba(88,166,255,0.4); }
+    .chat-send:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .chat-input-hint { font-size: 11px; color: var(--text2); margin-top: 7px; display: flex; align-items: center; gap: 12px; }
+    .chat-input-hint kbd { background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 10px; }
+
+    /* ── Active Agent Bar ───────────────────────────────────────────────── */
+    .chat-agent-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px; border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    /* Fade on the right edge indicating more chips */
+    .agent-selector-wrap::after {
+      content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 48px;
+      background: linear-gradient(to right, transparent, var(--bg2));
+      pointer-events: none; z-index: 2;
+    }
+    .chat-agent-bar-label { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; flex-shrink: 0; z-index: 3; }
+    .agent-selector-wrap { flex: 1; min-width: 0; overflow: hidden; position: relative; }
+    .agent-selector { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-right: 48px; }
+    .agent-selector::-webkit-scrollbar { display: none; }
+    .agent-chip {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 12px; font-size: 12px;
+      cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .agent-chip:hover { border-color: var(--accent2); color: var(--accent2); }
+    .agent-chip.active {
+      background: linear-gradient(135deg, rgba(88,166,255,0.2), rgba(88,166,255,0.08));
+      border-color: var(--accent2); color: var(--accent2); font-weight: 600;
+    }
+
+    /* ── Chat Active Agent Header ───────────────────────────────────────── */
+    .chat-active-header {
+      display: none; align-items: center; gap: 12px;
+      padding: 10px 20px; background: linear-gradient(135deg, rgba(88,166,255,0.08), transparent);
+      border-bottom: 1px solid var(--border);
+    }
+    .chat-active-header.visible { display: flex; }
+    .chat-active-avatar { font-size: 22px; }
+    .chat-active-info { flex: 1; }
+    .chat-active-name { font-size: 13px; font-weight: 700; }
+    .chat-active-role { font-size: 11px; color: var(--text2); }
+    .chat-active-badge { background: rgba(35,134,54,0.15); color: var(--green); border: 1px solid rgba(35,134,54,0.3); border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+
+    /* ── Chat Starter Cards ─────────────────────────────────────────────── */
+    .chat-starters-header {
+      font-size: 12px; color: var(--text2); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .chat-starters-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .chat-starters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .chat-starter-card {
+      background: var(--bg3); border: 1.5px solid var(--border);
+      border-radius: 14px; padding: 18px 18px 16px; cursor: pointer;
+      transition: all .2s; display: flex; flex-direction: column; gap: 8px;
+      text-align: left; position: relative; overflow: hidden;
+    }
+    .chat-starter-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      opacity: 0; transition: opacity .2s;
+    }
+    .chat-starter-card:nth-child(1)::before { background: linear-gradient(90deg, #0078d4, #50e6ff); }
+    .chat-starter-card:nth-child(2)::before { background: linear-gradient(90deg, #7719aa, #c099ff); }
+    .chat-starter-card:nth-child(3)::before { background: linear-gradient(90deg, #d83b01, #ff8c42); }
+    .chat-starter-card:nth-child(4)::before { background: linear-gradient(90deg, #107c10, #54d354); }
+    .chat-starter-card:hover { border-color: var(--accent2); transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
+    .chat-starter-card:hover::before { opacity: 1; }
+    .chat-starter-icon { font-size: 28px; line-height: 1; }
+    .chat-starter-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .chat-starter-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+    .chat-starter-arrow { position: absolute; bottom: 14px; right: 14px; font-size: 16px; color: var(--text2); opacity: 0; transition: all .2s; }
+    .chat-starter-card:hover .chat-starter-arrow { opacity: 1; transform: translateX(3px); }
+
+    /* ── Intake Form Panel ──────────────────────────────────────────────── */
+    .chat-intake-panel { padding: 20px 20px 0; animation: intakeSlideIn .2s ease; }
+    @keyframes intakeSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .intake-header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .intake-back { background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--text2); transition: all .15s; flex-shrink: 0; }
+    .intake-back:hover { border-color: var(--accent2); color: var(--accent2); }
+    .intake-icon-circle { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .intake-title-area { flex: 1; }
+    .intake-title { font-size: 15px; font-weight: 700; }
+    .intake-subtitle { font-size: 12px; color: var(--text2); margin-top: 3px; }
+    .intake-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-bottom: 20px; }
+    .intake-field { display: flex; flex-direction: column; gap: 6px; }
+    .intake-field.full { grid-column: 1 / -1; }
+    .intake-field label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 5px; }
+    .intake-req { color: var(--accent2); }
+    .intake-optional { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+    .intake-input, .intake-select, .intake-textarea {
+      background: var(--bg3); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 10px 13px; color: var(--text);
+      font-size: 13px; outline: none; font-family: inherit;
+      transition: border-color .2s, box-shadow .2s; width: 100%; box-sizing: border-box;
+    }
+    .intake-input::placeholder, .intake-textarea::placeholder { color: var(--text2); }
+    .intake-input:focus, .intake-select:focus, .intake-textarea:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(88,166,255,0.1); }
+    .intake-input.filled, .intake-select.filled, .intake-textarea.filled { border-color: rgba(63,185,80,0.5); }
+    .intake-select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .intake-select option { background: #1c2128; }
+    .intake-textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
+    .intake-footer { display: flex; align-items: center; gap: 16px; padding: 14px 0 18px; border-top: 1px solid var(--border); }
+    .intake-progress { flex: 1; }
+    .intake-progress-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+    .intake-progress-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .intake-progress-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent2), var(--green)); transition: width .3s ease; }
+    .intake-submit { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: white; border: none; border-radius: 10px; padding: 11px 24px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(88,166,255,.25); white-space: nowrap; flex-shrink: 0; }
+    .intake-submit:disabled { opacity: 0.38; cursor: not-allowed; box-shadow: none; background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+    .intake-submit:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(88,166,255,.4); }
 
     /* ── Outcomes ──────────────────────────────────────────────────────── */
-    .outcome-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
-    .outcome-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .outcome-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; transition: border-color .15s; }
+    .outcome-card:hover { border-color: rgba(88,166,255,.3); }
+    .outcome-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
     .outcome-desc { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.5; }
-    .outcome-issues { display: flex; flex-wrap: wrap; gap: 6px; }
-    .outcome-issue { background: rgba(88,166,255,.1); color: var(--accent); border: 1px solid rgba(88,166,255,.2); border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; }
-    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 10px; }
-    .progress-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width .5s; }
+    .outcome-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .outcome-issues { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+    .outcome-issue { background: rgba(88,166,255,.1); color: var(--accent); border: 1px solid rgba(88,166,255,.2); border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; text-decoration: none; }
+    .outcome-issue:hover { background: rgba(88,166,255,.2); }
+    .outcome-issue.closed { background: rgba(63,185,80,.1); color: var(--green); border-color: rgba(63,185,80,.2); }
+    .outcome-stats { font-size: 11px; color: var(--text2); white-space: nowrap; }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent2), var(--green)); transition: width .6s ease; }
 
     /* ── Page header ───────────────────────────────────────────────────── */
     .page-header { margin-bottom: 20px; }
@@ -213,6 +412,93 @@
       background: #ffffff; color: var(--text); border-color: var(--border);
     }
 
+    /* ── Forest Theme ───────────────────────────────────────────────────── */
+    html.forest {
+      --bg: #0a1208;
+      --bg2: #111d0e;
+      --bg3: #172610;
+      --border: #2a4020;
+      --text: #d4e8cc;
+      --text2: #7aaa6a;
+      --accent: #4ade80;
+      --accent2: #16a34a;
+      --green: #86efac;
+      --yellow: #fde047;
+      --red: #f87171;
+      --purple: #c084fc;
+      --orange: #fb923c;
+    }
+    html.forest .topbar { box-shadow: 0 1px 10px rgba(74,222,128,0.12); }
+    html.forest .nav-item.active { background: rgba(74,222,128,0.1); border-left-color: var(--accent); }
+    html.forest .kpi { border-top: 2px solid var(--accent2); }
+    html.forest .agent-card-v2:hover { box-shadow: 0 0 12px rgba(74,222,128,0.2); }
+
+    /* ── Midnight Theme ─────────────────────────────────────────────────── */
+    html.midnight {
+      --bg: #070714;
+      --bg2: #0e0e2a;
+      --bg3: #15153a;
+      --border: #2a2a5a;
+      --text: #e0deff;
+      --text2: #8080c0;
+      --accent: #a78bfa;
+      --accent2: #7c3aed;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --purple: #c084fc;
+      --orange: #fb923c;
+    }
+    html.midnight .topbar { box-shadow: 0 1px 15px rgba(167,139,250,0.15); }
+    html.midnight .nav-item.active { background: rgba(167,139,250,0.1); border-left-color: var(--accent); }
+    html.midnight .kpi { box-shadow: inset 0 0 20px rgba(167,139,250,0.05); }
+    html.midnight .agent-card-v2:hover { box-shadow: 0 0 16px rgba(167,139,250,0.25); border-color: var(--accent); }
+    html.midnight .logo-text { color: var(--accent); }
+
+    /* ── Sunset Theme ───────────────────────────────────────────────────── */
+    html.sunset {
+      --bg: #170a00;
+      --bg2: #221000;
+      --bg3: #301800;
+      --border: #4a2800;
+      --text: #ffecd2;
+      --text2: #cc8855;
+      --accent: #fb923c;
+      --accent2: #ea580c;
+      --green: #4ade80;
+      --yellow: #fde047;
+      --red: #f87171;
+      --purple: #e879f9;
+      --orange: #fdba74;
+    }
+    html.sunset .topbar { background: linear-gradient(90deg, #1a0800, #220f04); box-shadow: 0 1px 10px rgba(251,146,60,0.15); }
+    html.sunset .nav-item.active { background: rgba(251,146,60,0.1); border-left-color: var(--accent); }
+    html.sunset .kpi { border-bottom: 2px solid var(--accent2); }
+    html.sunset .agent-card-v2:hover { box-shadow: 0 0 14px rgba(251,146,60,0.25); }
+
+    /* ── Ocean Theme ────────────────────────────────────────────────────── */
+    html.ocean {
+      --bg: #020d18;
+      --bg2: #051525;
+      --bg3: #071e33;
+      --border: #0e3a5c;
+      --text: #c8e8ff;
+      --text2: #5599cc;
+      --accent: #38bdf8;
+      --accent2: #0284c7;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --purple: #818cf8;
+      --orange: #fb923c;
+    }
+    html.ocean .topbar { box-shadow: 0 1px 15px rgba(56,189,248,0.12); }
+    html.ocean .nav-item.active { background: rgba(56,189,248,0.1); border-left-color: var(--accent); }
+    html.ocean .kpi { box-shadow: inset 0 0 20px rgba(56,189,248,0.04); }
+    html.ocean .agent-card-v2:hover { box-shadow: 0 0 16px rgba(56,189,248,0.2); border-color: var(--accent); }
+    html.ocean .logo-text { color: var(--accent); }
+
+
     /* ── Glassmorphism cards ────────────────────────────────────────────── */
     .card-glass {
       background: rgba(255,255,255,0.04);
@@ -227,6 +513,142 @@
     /* ── Particle canvas ────────────────────────────────────────────────── */
     #particles-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.4; }
     .app, #particles-bg ~ * { position: relative; z-index: 1; }
+
+    /* ── Agent Library ──────────────────────────────────────────────────── */
+    .lib-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .lib-search { flex: 1; min-width: 180px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 13px; outline: none; }
+    .lib-search:focus { border-color: var(--accent2); }
+    .lib-source-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .lib-tab { background: var(--bg3); border: 1px solid var(--border); border-radius: 16px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: var(--text2); transition: all .15s; white-space: nowrap; }
+    .lib-tab:hover { border-color: var(--accent); color: var(--text); }
+    .lib-tab.active { background: rgba(88,166,255,0.12); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+    /* Section headers for Installed / Available */
+    .lib-section-header { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; }
+    .lib-section-title { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .lib-section-count { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 11px; color: var(--text2); }
+    .lib-section-line { flex: 1; height: 1px; background: var(--border); }
+    .lib-section-header:first-child { margin-top: 4px; }
+    /* Cards */
+    .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .lib-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; cursor: pointer; transition: border-color .15s, box-shadow .15s; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
+    .lib-card:hover { border-color: var(--accent2); box-shadow: 0 2px 12px rgba(88,166,255,0.1); }
+    .lib-card.installed { border-color: rgba(63,185,80,0.35); }
+    .lib-card.installed::after { content: '✓ Active'; position: absolute; top: 10px; right: 10px; font-size: 9px; font-weight: 700; color: var(--green); background: rgba(63,185,80,0.12); padding: 2px 7px; border-radius: 8px; letter-spacing: .4px; }
+    .lib-card.core-agent::after { content: '⚙️ Core'; color: var(--accent2); background: rgba(88,166,255,.1); }
+    .lib-card.installing { opacity: .65; pointer-events: none; }
+    .lib-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .lib-card-icon { font-size: 26px; flex-shrink: 0; }
+    .lib-card-name { font-weight: 700; font-size: 13px; line-height: 1.3; }
+    .lib-card-role { font-size: 11px; color: var(--text2); line-height: 1.4; flex: 1; }
+    .lib-card-footer { display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+    .source-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .source-badge.coe     { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .source-badge.rar     { background: rgba(188,140,255,0.15); color: var(--purple); }
+    .source-badge.aibast  { background: rgba(63,185,80,0.15); color: var(--green); }
+    .source-badge.community { background: rgba(210,153,34,0.15); color: var(--yellow); }
+    .source-badge.local   { background: rgba(255,166,87,0.15); color: var(--orange); }
+    .quality-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; }
+    .quality-badge.official   { background: rgba(63,185,80,0.15); color: var(--green); }
+    .quality-badge.verified   { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .quality-badge.community  { background: rgba(139,148,158,0.15); color: var(--text2); }
+    .lib-card-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .lib-btn { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; color: var(--text2); transition: all .15s; }
+    .lib-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .lib-btn.primary { background: var(--accent2); color: white; border-color: var(--accent2); }
+    .lib-btn.primary:hover { background: var(--accent); border-color: var(--accent); }
+    .lib-btn.danger { background: rgba(248,81,73,0.12); color: #f85149; border-color: rgba(248,81,73,0.3); }
+    .lib-btn.danger:hover { background: rgba(248,81,73,0.2); }
+    .lib-stats { display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+    .lib-stat-item { font-size: 12px; color: var(--text2); }
+    .lib-stat-item strong { color: var(--text); }
+    /* Install toast */
+    .lib-toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; box-shadow: 0 8px 32px rgba(0,0,0,.4); z-index: 9000; display: flex; align-items: center; gap: 10px; animation: slideUp .25s ease; pointer-events: none; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+    /* Agent Library detail modal */
+    .lib-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; }
+    .lib-modal-overlay.open { display: flex; }
+    .lib-modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 540px; width: 90%; max-height: 82vh; overflow-y: auto; position: relative; }
+    .lib-modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; }
+    .lib-modal-close:hover { color: var(--text); }
+    .lib-modal-icon { font-size: 40px; margin-bottom: 8px; }
+    .lib-modal-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .lib-modal-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin: 12px 0; }
+    .lib-modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .lib-modal-tag { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 3px 9px; font-size: 11px; color: var(--text2); }
+    .lib-modal-section { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin: 14px 0 6px; }
+    .lib-modal-code { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 12px; word-break: break-all; }
+    .lib-modal-status-bar { display: flex; align-items: center; gap: 8px; background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.25); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: var(--green); }
+
+
+    /* ── Outcome Editor Modal ──────────────────────────────────────────── */
+    .outcome-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2100;display:none;align-items:center;justify-content:center; }
+    .outcome-modal-overlay.open { display:flex; }
+    .outcome-modal { background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:520px;max-width:92vw;max-height:88vh;overflow-y:auto; }
+    .outcome-modal h3 { font-size:16px;font-weight:700;margin-bottom:18px; }
+    .outcome-field { margin-bottom:14px; }
+    .outcome-field label { display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px; }
+    .outcome-field input, .outcome-field textarea, .outcome-field select { width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box; }
+    .outcome-field input:focus, .outcome-field textarea:focus { border-color:var(--accent2); }
+    .outcome-field textarea { min-height:80px;resize:vertical; }
+    .outcome-emoji-row { display:flex;gap:8px;flex-wrap:wrap;margin-top:6px; }
+    .outcome-emoji-btn { font-size:20px;cursor:pointer;padding:4px 6px;border-radius:6px;border:2px solid transparent;transition:border-color .12s; }
+    .outcome-emoji-btn.selected { border-color:var(--accent); }
+    .outcome-card-actions { display:flex;gap:6px;justify-content:flex-end;margin-top:6px; }
+    .outcome-edit-btn { background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2);padding:2px 6px;border-radius:4px;transition:color .12s; }
+    .outcome-edit-btn:hover { color:var(--accent); }
+    .outcome-del-btn { background:none;border:none;cursor:pointer;font-size:13px;color:var(--text2);padding:2px 6px;border-radius:4px;transition:color .12s; }
+    .outcome-del-btn:hover { color:#f85149; }
+    .outcome-status-badge { font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:auto; }
+    .outcome-status-badge.achieved { background:rgba(63,185,80,0.15);color:var(--green); }
+    .outcome-status-badge.paused   { background:rgba(210,153,34,0.15);color:var(--yellow); }
+    .outcome-status-badge.active   { background:rgba(88,166,255,0.12);color:var(--accent); }
+
+    /* ── Achievement Cards ─────────────────────────────────────────────── */
+    .ach-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:20px; }
+    .ach-card { perspective:600px;height:190px;cursor:pointer; }
+    .ach-card-inner { position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d; }
+    .ach-card:hover .ach-card-inner, .ach-card.flipped .ach-card-inner { transform:rotateY(180deg); }
+    .ach-front, .ach-back { position:absolute;inset:0;border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden; }
+    .ach-front { background:var(--bg3);border:1px solid var(--border);text-align:center; }
+    .ach-back  { background:var(--bg2);border:1px solid var(--accent2);transform:rotateY(180deg);text-align:center;gap:8px; }
+    .ach-card.locked .ach-front { filter:grayscale(1);opacity:.45; }
+    .ach-card.locked .ach-card-inner:hover { transform:none; }
+    .ach-card.locked { cursor:default; }
+    .ach-icon { font-size:38px;margin-bottom:8px; }
+    .ach-name { font-size:12px;font-weight:700;color:var(--text); }
+    .ach-xp   { font-size:10px;color:var(--accent);font-weight:700;margin-top:4px; }
+    .ach-back .ach-desc { font-size:11px;color:var(--text2);line-height:1.5; }
+    .ach-back .ach-date { font-size:10px;color:var(--green);margin-top:4px; }
+    .ach-unlocked-badge { background:linear-gradient(135deg,var(--accent2),var(--green));color:white;font-size:9px;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;letter-spacing:.5px; }
+
+    /* ── Quick Capture (mobile) ────────────────────────────────────────── */
+    .qc-form { max-width:560px;margin:0 auto; }
+    .qc-type-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px; }
+    .qc-type-btn { background:var(--bg3);border:2px solid var(--border);border-radius:10px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s; }
+    .qc-type-btn:hover { border-color:var(--accent2); }
+    .qc-type-btn.selected { border-color:var(--accent);background:rgba(88,166,255,0.08); }
+    .qc-type-btn .qc-type-icon { font-size:26px;margin-bottom:6px; }
+    .qc-type-btn .qc-type-label { font-size:12px;font-weight:700; }
+    .qc-field { margin-bottom:14px; }
+    .qc-field label { display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px; }
+    .qc-field input, .qc-field textarea, .qc-field select { width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:9px 13px;color:var(--text);font-size:14px;outline:none;box-sizing:border-box; }
+    .qc-field input:focus, .qc-field textarea:focus { border-color:var(--accent2); }
+    .qc-field textarea { min-height:90px;resize:vertical; }
+    .qc-submit { width:100%;padding:13px;background:var(--accent2);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:4px; }
+    .qc-submit:hover { background:var(--accent); }
+    .qc-submit:disabled { opacity:.5;cursor:not-allowed; }
+    .qc-success { background:rgba(63,185,80,0.1);border:1px solid var(--green);border-radius:10px;padding:20px;text-align:center;margin-top:16px;display:none; }
+
+    /* ── Agent 365 Connect ─────────────────────────────────────────────── */
+    .a365-connect { background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:500px;margin:30px auto;text-align:center; }
+    .a365-connect h3 { font-size:18px;font-weight:700;margin-bottom:8px; }
+    .a365-connect p { font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px; }
+    .a365-input { width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 13px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px; }
+    .a365-input:focus { border-color:var(--accent2); }
+    .a365-connect-btn { background:var(--accent2);color:white;border:none;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s; }
+    .a365-connect-btn:hover { background:var(--accent); }
+    .a365-badge { display:inline-block;background:rgba(88,166,255,0.12);color:var(--accent);border:1px solid rgba(88,166,255,0.3);border-radius:8px;padding:2px 9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px; }
+    .a365-ecosystem-chip { display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:3px 10px;font-size:11px;color:var(--text2);margin:3px; }
 
     /* ── Ticker ─────────────────────────────────────────────────────────── */
     .ticker-wrap { grid-column: 1 / -1; background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); height: 26px; overflow: hidden; display: flex; align-items: center; }
@@ -245,6 +667,16 @@
     .mc-stat .val { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
     .theme-toggle { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 14px; padding: 3px 10px; font-size: 11px; cursor: pointer; transition: all .2s; }
     .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    select.theme-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+      border-radius: 14px; padding: 3px 22px 3px 10px; font-size: 11px; cursor: pointer; transition: all .2s; outline: none;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; }
+    select.theme-select:hover { border-color: var(--accent); color: var(--accent); }
+    .theme-swatch { background: var(--bg3); border: 2px solid var(--border); color: var(--text2);
+      border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; transition: all .15s; }
+    .theme-swatch:hover { border-color: var(--accent); color: var(--text); }
+    .theme-swatch.active { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.08); font-weight: 700; }
     .user-chip { display: flex; align-items: center; gap: 6px; background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 3px 10px; font-size: 11px; color: var(--text2); }
     .user-chip img { width: 16px; height: 16px; border-radius: 50%; }
     .logout-btn { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 14px; padding: 3px 8px; font-size: 10px; cursor: pointer; transition: all .2s; text-decoration: none; }
@@ -286,6 +718,16 @@
     .confetti-piece { position: fixed; width: 8px; height: 8px; top: -10px; animation: confetti-fall 3s linear forwards; pointer-events: none; z-index: 9999; border-radius: 2px; }
     @keyframes confetti-fall { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
 
+    /* ── Chat Starter Prompts ───────────────────────────────────────────── */
+    .chat-starters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .chat-starters.compact { grid-template-columns: 1fr 1fr; }
+    .chat-starter-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all .18s; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+    .chat-starter-card:hover { border-color: var(--accent2); background: rgba(88,166,255,0.07); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .chat-starter-icon { font-size: 20px; line-height: 1; }
+    .chat-starter-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .chat-starter-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
+    .chat-starters-header { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; }
+
     /* ── Gradient hero banner ───────────────────────────────────────────── */
     .hero-gradient { background: linear-gradient(135deg, rgba(31,111,235,0.15) 0%, rgba(188,140,255,0.08) 50%, rgba(63,185,80,0.05) 100%); border: 1px solid rgba(88,166,255,0.15); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; position: relative; overflow: hidden; }
     .hero-gradient::before { content: ''; position: absolute; top: -50%; right: -20%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(88,166,255,0.12) 0%, transparent 70%); pointer-events: none; }
@@ -307,11 +749,11 @@
   <header class="topbar">
     <div class="status-dot"></div>
     <div class="logo">
-      <img src="logo-avatar.png" alt="{{TEAM_NAME}} logo"/>
-      <div class="logo-text">{{TEAM_NAME}} <small>{{TEAM_SUBTITLE}} · Command Center</small></div>
+      <img src="logo-avatar.png" alt="Bots in Blazers logo"/>
+      <div class="logo-text">Bots in Blazers <small>Mfg CoE · Command Center</small></div>
     </div>
     <div class="topbar-stats">
-      <div class="mc-stat">⚡ <span class="val" id="agents-online">7</span> agents</div>
+      <div class="mc-stat">⚡ <span class="val" id="agents-online">...</span> agents</div>
       <div class="mc-stat">⏱️ up <span class="val" id="topbar-uptime">0m</span></div>
       <div class="mc-stat">🕐 <span class="val" id="topbar-clock"></span></div>
     </div>
@@ -321,8 +763,16 @@
         <span id="user-name"></span>
         <a class="logout-btn" href="/.auth/logout">sign out</a>
       </div>
-      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">☀️ Light</button>
-      <button class="chat-btn" onclick="showView('chat')">💬 Message Agents</button>
+      <select class="theme-select" id="theme-btn" onchange="setTheme(this.value)" title="Choose theme">
+        <option value="dark">🌙 Dark</option>
+        <option value="light">☀️ Light</option>
+        <option value="neon">⚡ Neon</option>
+        <option value="forest">🌿 Forest</option>
+        <option value="midnight">🌌 Midnight</option>
+        <option value="sunset">🌅 Sunset</option>
+        <option value="ocean">🌊 Ocean</option>
+      </select>
+      <button class="chat-btn" onclick="showView('chat')">🚀 Start Something</button>
     </div>
   </header>
 
@@ -350,12 +800,15 @@
     <div class="nav-item" onclick="showView('activity')"><span class="icon">⚡</span> Activity Feed</div>
 
     <div class="nav-section" style="margin-top:12px">Community</div>
+    <div class="nav-item" onclick="showView('library')"><span class="icon">🗂️</span> Agent Library</div>
     <div class="nav-item" onclick="showView('forum')"><span class="icon">💬</span> Agent Forum</div>
     <div class="nav-item" onclick="showView('wrapup')"><span class="icon">📊</span> Daily Wrap-Up</div>
-    <div class="nav-item" onclick="showView('chat')"><span class="icon">📨</span> Chat with {{OWNER_DISPLAY_NAME}}</div>
+    <div class="nav-item" onclick="showView('chat')"><span class="icon">🚀</span> Start Something</div>
     <div class="nav-item" onclick="showView('sops')"><span class="icon">📄</span> SOPs & Docs</div>
     <div class="nav-item" onclick="showView('knowledge')"><span class="icon">🧠</span> Knowledge Base</div>
     <div class="nav-item" onclick="showView('environments')"><span class="icon">🌐</span> D365 Environments</div>
+    <div class="nav-item" onclick="showView('achievements')"><span class="icon">🏆</span> Achievements</div>
+    <div class="nav-item" onclick="showView('quick-capture')"><span class="icon">📱</span> Quick Capture</div>
 
     <div class="nav-section" style="margin-top:12px">Config</div>
     <div class="nav-item" onclick="showView('charter')"><span class="icon">📜</span> CoE Charter</div>
@@ -368,7 +821,7 @@
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
       <div class="hero-gradient">
-        <div class="hero-greeting">Good morning, {{OWNER_DISPLAY_NAME}} 👋</div>
+        <div class="hero-greeting">Good morning, Bill 👋</div>
         <div class="hero-sub" id="dashboard-date">Loading...</div>
       </div>
 
@@ -383,7 +836,7 @@
       <div class="kpi-row">
         <div class="kpi"><div class="kpi-value" id="kpi-active">—</div><div class="kpi-label">Active Issues</div></div>
         <div class="kpi"><div class="kpi-value" id="kpi-done">—</div><div class="kpi-label">Completed This Week</div></div>
-        <div class="kpi"><div class="kpi-value" id="kpi-agents">7</div><div class="kpi-label">Agents Online</div></div>
+        <div class="kpi"><div class="kpi-value" id="kpi-agents">14</div><div class="kpi-label">Agents Online</div></div>
         <div class="kpi"><div class="kpi-value" id="kpi-decisions">—</div><div class="kpi-label">Needs Bill</div><div class="kpi-delta warn" id="kpi-decisions-label"></div></div>
       </div>
 
@@ -401,17 +854,76 @@
 
     <!-- AGENTS -->
     <div class="view" id="view-agents">
-      <div class="page-header"><h1>🤖 Agent Team</h1><p>{{AGENT_COUNT}} agents operating in {{TEAM_NAME}}</p></div>
+      <div class="page-header"><h1>🤖 Agent Team</h1><p id="agents-page-header">Loading agents…</p></div>
       <div class="agent-grid" id="agent-grid"></div>
     </div>
 
     <!-- OUTCOMES -->
     <div class="view" id="view-outcomes">
-      <div class="page-header">
-        <h1>🎯 Outcomes</h1>
-        <p>Every piece of work maps to a customer outcome. Track progress here.</p>
+      <div class="page-header" style="margin-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div>
+          <h1>🎯 Outcomes</h1>
+          <p>Every piece of work maps to a customer outcome. Progress calculated from live GitHub issues.</p>
+        </div>
+        <button onclick="openOutcomeModal()" style="background:var(--accent2);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;margin-top:4px">+ New Outcome</button>
       </div>
-      <div id="outcomes-list"></div>
+      <!-- KPI strip -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px" id="outcomes-kpis">
+        <div class="kpi"><div class="kpi-value" id="okpi-total">—</div><div class="kpi-label">Total Outcomes</div></div>
+        <div class="kpi"><div class="kpi-value" id="okpi-active">—</div><div class="kpi-label">Active Issues</div></div>
+        <div class="kpi"><div class="kpi-value" id="okpi-done">—</div><div class="kpi-label">Issues Closed</div></div>
+        <div class="kpi"><div class="kpi-value" id="okpi-pct" style="color:var(--green)">—</div><div class="kpi-label">Overall Progress</div></div>
+      </div>
+      <div id="outcomes-list"><p style="color:var(--text2)">⏳ Loading...</p></div>
+    </div>
+
+    <!-- OUTCOME EDITOR MODAL -->
+    <div id="outcome-modal-overlay" class="outcome-modal-overlay" onclick="closeOutcomeModalClick(event)">
+      <div class="outcome-modal">
+        <h3 id="outcome-modal-heading">✏️ New Outcome</h3>
+        <input type="hidden" id="outcome-edit-id" value="" />
+        <div class="outcome-field">
+          <label>Icon</label>
+          <div class="outcome-emoji-row" id="outcome-emoji-row">
+            🎯🚀📦🛡️🤖✅📄💡🏭🔧📊🎭⚡🧪🔍
+          </div>
+          <input id="outcome-icon-val" type="text" placeholder="or type any emoji" style="margin-top:8px;width:120px" maxlength="4" />
+        </div>
+        <div class="outcome-field">
+          <label>Title *</label>
+          <input id="outcome-title-val" type="text" placeholder="e.g. Warranty Self-Service" />
+        </div>
+        <div class="outcome-field">
+          <label>Description *</label>
+          <textarea id="outcome-desc-val" placeholder="What outcome does this deliver for the customer?"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="outcome-field">
+            <label>Priority</label>
+            <select id="outcome-priority-val">
+              <option value="p1">P1 — Critical</option>
+              <option value="p2">P2 — High</option>
+              <option value="p3">P3 — Normal</option>
+            </select>
+          </div>
+          <div class="outcome-field">
+            <label>Status</label>
+            <select id="outcome-status-val">
+              <option value="active">Active</option>
+              <option value="achieved">Achieved ✅</option>
+              <option value="paused">Paused ⏸</option>
+            </select>
+          </div>
+        </div>
+        <div class="outcome-field">
+          <label>Linked GitHub Issue #s (comma-separated)</label>
+          <input id="outcome-issues-val" type="text" placeholder="e.g. 51, 46, 72" />
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+          <button onclick="closeOutcomeModal()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:8px 16px;font-size:13px;cursor:pointer">Cancel</button>
+          <button onclick="saveOutcome()" style="background:var(--accent2);color:white;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">Save Outcome</button>
+        </div>
+      </div>
     </div>
 
     <!-- BACKLOG -->
@@ -481,23 +993,97 @@
 
     <!-- FORUM -->
     <div class="view" id="view-forum">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:14px">
         <h1>💬 Agent Forum</h1>
-        <p>Agents post ideas, findings, and discussions here. You can reply.</p>
+        <p>Agents post ideas, findings, and discussions here. Reply inline without leaving the app.</p>
       </div>
-      <button class="forum-new-btn" onclick="newForumTopic()">+ New Topic</button>
+      <div class="forum-toolbar">
+        <button class="forum-new-btn" onclick="openForumNewTopic()">✏️ New Topic</button>
+        <div class="forum-filter-btns" id="forum-filters">
+          <button class="forum-filter-btn active" onclick="forumFilter('all',this)">All</button>
+          <button class="forum-filter-btn" onclick="forumFilter('idea',this)">💡 Ideas</button>
+          <button class="forum-filter-btn" onclick="forumFilter('sop',this)">📄 SOPs</button>
+          <button class="forum-filter-btn" onclick="forumFilter('tech',this)">🛠️ Tech</button>
+          <button class="forum-filter-btn" onclick="forumFilter('community-post',this)">💬 General</button>
+        </div>
+        <button onclick="renderForum()" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text2);cursor:pointer">↺ Refresh</button>
+      </div>
       <div id="forum-topics"></div>
     </div>
 
     <!-- CHAT -->
     <div class="view" id="view-chat">
-      <div class="page-header"><h1>📨 Chat with Agents</h1></div>
-      <div class="agent-selector" id="chat-agent-selector"></div>
+      <div class="page-header" style="padding-bottom:12px;">
+        <h1>🚀 Start Something</h1>
+        <p style="font-size:12px;color:var(--text2);margin-top:4px;">Choose an agent, pick a starter, or just type below</p>
+      </div>
+
+      <!-- Active agent context bar — shown once conversation starts -->
+      <div class="chat-active-header" id="chat-active-header">
+        <div class="chat-active-avatar" id="chat-active-avatar">🎯</div>
+        <div class="chat-active-info">
+          <div class="chat-active-name" id="chat-active-name">Orchestrator</div>
+          <div class="chat-active-role" id="chat-active-role">Routes tasks across the CoE agent team</div>
+        </div>
+        <span class="chat-active-badge">● Online</span>
+        <button onclick="clearChat()" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">New Chat</button>
+      </div>
+
+      <!-- Agent selector row -->
+      <div class="chat-agent-bar">
+        <span class="chat-agent-bar-label">Agent</span>
+        <div class="agent-selector-wrap">
+          <div class="agent-selector" id="chat-agent-selector"></div>
+        </div>
+      </div>
+
+      <!-- Quick-start prompt cards — hidden once a conversation starts -->
+      <div id="chat-starters-section" style="display:none; padding: 20px 20px 0;">
+        <div class="chat-starters-header">✨ Quick Start</div>
+        <div class="chat-starters">
+          <button class="chat-starter-card" onclick="openIntakeForm('D365 Demo')">
+            <div class="chat-starter-icon">🏭</div>
+            <div class="chat-starter-title">Set up a D365 demo</div>
+            <div class="chat-starter-desc">Prep a tailored customer demo for Sales, Marketing, Customer Service, CCaaS or Field Service</div>
+            <span class="chat-starter-arrow">→</span>
+          </button>
+          <button class="chat-starter-card" onclick="openIntakeForm('Power Platform')">
+            <div class="chat-starter-icon">⚡</div>
+            <div class="chat-starter-title">Build a Power Platform solution</div>
+            <div class="chat-starter-desc">Apps, Copilot Studio agents, Power Automate flows, or other Power Platform tech</div>
+            <span class="chat-starter-arrow">→</span>
+          </button>
+          <button class="chat-starter-card" onclick="openIntakeForm('RAPP')">
+            <div class="chat-starter-icon">🚀</div>
+            <div class="chat-starter-title">Rapidly prototype with RAPP</div>
+            <div class="chat-starter-desc">Scaffold an agentic use case from idea to working agent — fast</div>
+            <span class="chat-starter-arrow">→</span>
+          </button>
+          <button class="chat-starter-card" onclick="openIntakeForm('CoE')">
+            <div class="chat-starter-icon">🏛️</div>
+            <div class="chat-starter-title">Set up a Center of Excellence</div>
+            <div class="chat-starter-desc">Define mission, agent personas, SOP structure, and tooling for a new CoE</div>
+            <span class="chat-starter-arrow">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Guided intake form — rendered dynamically when a card is clicked -->
+      <div id="chat-intake-section" style="display:none"></div>
+
       <div class="chat-container">
         <div class="chat-messages" id="chat-messages"></div>
-        <div class="chat-input-row">
-          <input class="chat-input" id="chat-input" placeholder="Message the CoE agents..." onkeydown="if(event.key==='Enter')sendChat()" />
-          <button class="chat-send" onclick="sendChat()">Send →</button>
+        <div class="chat-input-bar">
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chat-input" placeholder="Message the CoE agents… or pick a starter above" rows="1"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"
+              oninput="this.style.height='44px';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+            <button class="chat-send" onclick="sendChat()" title="Send (Enter)">↑</button>
+          </div>
+          <div class="chat-input-hint">
+            <span><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</span>
+            <span id="chat-agent-hint" style="margin-left:auto;">Talking to: <strong>Orchestrator</strong></span>
+          </div>
         </div>
       </div>
     </div>
@@ -513,7 +1099,7 @@
       <div class="page-header"><h1>📜 CoE Charter</h1><p>The operating rules and context for all agents</p></div>
       <div class="card">
         <p style="color:var(--text2);margin-bottom:12px;font-size:13px">
-          Source: <a href="https://github.com/{{REPO}}/blob/main/{{CHARTER_PATH}}" target="_blank" style="color:var(--accent)">COE_CHARTER.md ↗</a>
+          Source: <a href="https://github.com/billwhalenmsft/CommunityRAPP-BillWhalen/blob/main/customers/mfg_coe/COE_CHARTER.md" target="_blank" style="color:var(--accent)">COE_CHARTER.md ↗</a>
           — edit to change agent behavior
         </p>
         <div id="charter-content" style="font-size:13px;line-height:1.7;color:var(--text2)">⏳ Loading charter...</div>
@@ -526,15 +1112,15 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div class="card">
           <div class="card-title">⭐ Master CE Mfg</div>
-          <p style="font-size:11px;color:var(--text2);margin-bottom:10px">{{ENV_PRIMARY_DESCRIPTION}}</p>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:10px">Primary Discrete Manufacturing demo environment</p>
           <div id="kb-master" style="font-size:12px;color:var(--text2);line-height:1.6">⏳ Loading...</div>
-          <a href="https://github.com/{{REPO}}/blob/main/{{KB_PATH_1}}" target="_blank" style="font-size:11px;color:var(--accent);display:inline-block;margin-top:8px">Edit context card ↗</a>
+          <a href="https://github.com/billwhalenmsft/CommunityRAPP-BillWhalen/blob/main/customers/mfg_coe/knowledge_base/master_ce_mfg.md" target="_blank" style="font-size:11px;color:var(--accent);display:inline-block;margin-top:8px">Edit context card ↗</a>
         </div>
         <div class="card">
           <div class="card-title">⭐ Mfg Gold Template</div>
           <p style="font-size:11px;color:var(--text2);margin-bottom:10px">Gold template / reusable baseline environment</p>
           <div id="kb-gold" style="font-size:12px;color:var(--text2);line-height:1.6">⏳ Loading...</div>
-          <a href="https://github.com/{{REPO}}/blob/main/{{KB_PATH_2}}" target="_blank" style="font-size:11px;color:var(--accent);display:inline-block;margin-top:8px">Edit context card ↗</a>
+          <a href="https://github.com/billwhalenmsft/CommunityRAPP-BillWhalen/blob/main/customers/mfg_coe/knowledge_base/mfg_gold_template.md" target="_blank" style="font-size:11px;color:var(--accent);display:inline-block;margin-top:8px">Edit context card ↗</a>
         </div>
       </div>
       <div class="card">
@@ -569,6 +1155,107 @@
       </div>
     </div>
 
+    <!-- AGENT LIBRARY -->
+    <div class="view" id="view-library">
+      <div class="page-header">
+        <h1>🗂️ Agent Library</h1>
+        <p>Browse and search agents across all connected sources — CoE team, RAR Registry, AIBAST, and Community Templates.</p>
+      </div>
+
+      <div class="lib-stats">
+        <div class="lib-stat-item"><strong id="lib-stat-installed">0</strong> installed</div>
+        <div class="lib-stat-item"><strong id="lib-stat-available">0</strong> available</div>
+        <div class="lib-stat-item" style="color:var(--purple)"><strong id="lib-stat-rar">0</strong> RAR</div>
+        <div class="lib-stat-item" style="color:var(--green)"><strong id="lib-stat-aibast">0</strong> AIBAST</div>
+        <div class="lib-stat-item" style="color:var(--yellow)"><strong id="lib-stat-community">0</strong> community</div>
+      </div>
+
+      <div class="lib-toolbar">
+        <input class="lib-search" id="lib-search-input" placeholder="Search agents by name, skill, or category…" oninput="renderLibrary()" />
+        <button class="lib-btn primary" onclick="liveLibrarySearch()">🔍 Search Live Sources</button>
+      </div>
+
+      <div class="lib-source-tabs" id="lib-source-tabs">
+        <div class="lib-tab active" data-source="all"       onclick="setLibTab(this,'all')">All Sources</div>
+        <div class="lib-tab"        data-source="rar"       onclick="setLibTab(this,'rar')">⚡ RAR Registry</div>
+        <div class="lib-tab"        data-source="aibast"    onclick="setLibTab(this,'aibast')">🏭 AIBAST</div>
+        <div class="lib-tab"        data-source="community" onclick="setLibTab(this,'community')">🌐 Community</div>
+        <div class="lib-tab"        data-source="agent365"  onclick="setLibTab(this,'agent365')">🔵 Agent 365</div>
+      </div>
+
+      <!-- Installed section -->
+      <div class="lib-section-header">
+        <span class="lib-section-title">✅ Installed Agents</span>
+        <span class="lib-section-count" id="lib-installed-count">0</span>
+        <div class="lib-section-line"></div>
+      </div>
+      <div class="lib-grid" id="lib-installed-grid"></div>
+
+      <!-- Available section -->
+      <div class="lib-section-header" style="margin-top:28px">
+        <span class="lib-section-title">📦 Available to Install</span>
+        <span class="lib-section-count" id="lib-available-count">0</span>
+        <div class="lib-section-line"></div>
+      </div>
+      <div class="lib-grid" id="lib-grid"></div>
+    </div>
+
+    <!-- Agent Library Detail Modal -->
+    <div class="lib-modal-overlay" id="lib-modal-overlay" onclick="closeLibModal(event)">
+      <div class="lib-modal" id="lib-modal">
+        <button class="lib-modal-close" onclick="document.getElementById('lib-modal-overlay').classList.remove('open')">✕</button>
+        <div id="lib-modal-content"></div>
+      </div>
+    </div>
+
+    <!-- ACHIEVEMENTS -->
+    <div class="view" id="view-achievements">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div><h1>🏆 Achievements</h1><p>Milestones earned as the CoE grows. Hover a card to flip it.</p></div>
+        <div id="ach-xp-total" style="font-size:13px;color:var(--accent);font-weight:700;margin-top:6px"></div>
+      </div>
+      <div class="ach-grid" id="ach-grid"></div>
+    </div>
+
+    <!-- QUICK CAPTURE -->
+    <div class="view" id="view-quick-capture">
+      <div class="page-header"><h1>📱 Quick Capture</h1><p>Bookmark this page on your phone to instantly log ideas, use cases, bugs, or requests.</p></div>
+      <div class="qc-form">
+        <div class="qc-type-grid" id="qc-type-grid">
+          <div class="qc-type-btn selected" onclick="selectQcType('idea',this)"><div class="qc-type-icon">💡</div><div class="qc-type-label">Idea</div></div>
+          <div class="qc-type-btn" onclick="selectQcType('use-case',this)"><div class="qc-type-icon">🎯</div><div class="qc-type-label">Use Case</div></div>
+          <div class="qc-type-btn" onclick="selectQcType('sop',this)"><div class="qc-type-icon">📄</div><div class="qc-type-label">SOP Request</div></div>
+          <div class="qc-type-btn" onclick="selectQcType('bug',this)"><div class="qc-type-icon">🐛</div><div class="qc-type-label">Bug / Issue</div></div>
+        </div>
+        <div class="qc-field">
+          <label>Title *</label>
+          <input id="qc-title" type="text" placeholder="One-line summary" oninput="validateQcForm()" />
+        </div>
+        <div class="qc-field">
+          <label>Details</label>
+          <textarea id="qc-body" placeholder="More context, steps to reproduce, or expected outcome..."></textarea>
+        </div>
+        <div class="qc-field">
+          <label>Priority</label>
+          <select id="qc-priority">
+            <option value="p2">P2 — High</option>
+            <option value="p1">P1 — Critical</option>
+            <option value="p3">P3 — Normal</option>
+          </select>
+        </div>
+        <button id="qc-submit-btn" class="qc-submit" onclick="submitQuickCapture()" disabled>Submit</button>
+        <div id="qc-no-pat" style="font-size:12px;color:var(--text2);margin-top:10px;text-align:center;display:none">
+          ⚠️ No PAT set — will open GitHub in a new tab with pre-filled content. <a href="#" onclick="showView('settings');return false" style="color:var(--accent)">Add PAT in Settings</a> for direct submission.
+        </div>
+        <div class="qc-success" id="qc-success">
+          <div style="font-size:32px;margin-bottom:8px">✅</div>
+          <div style="font-weight:700;margin-bottom:4px">Captured!</div>
+          <div style="font-size:13px;color:var(--text2)" id="qc-success-msg"></div>
+          <button onclick="resetQcForm()" style="margin-top:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:7px 16px;font-size:13px;cursor:pointer">Capture Another</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="view" id="view-settings">
       <div class="page-header"><h1>⚙️ Settings</h1></div>
@@ -584,19 +1271,91 @@
         <p style="font-size:12px;color:var(--text2);margin-bottom:16px">The RAPP Function App endpoint for the Chat view.</p>
         <button class="chat-send" style="padding:8px 24px;font-size:14px" onclick="saveConfig()">💾 Save PAT</button>
         <span id="save-status" style="margin-left:12px;font-size:12px;color:var(--green);display:none">✓ Saved!</span>
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+          <div class="card-title" style="margin-bottom:8px">🔐 Admin Mode</div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Enter admin PIN to unlock advanced settings (agent sources, endpoint config).</p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="cfg-admin-pin" class="chat-input" style="max-width:180px" type="password" placeholder="Admin PIN…" onkeydown="if(event.key==='Enter')toggleAdminMode()" />
+            <button class="lib-btn primary" onclick="toggleAdminMode()">Unlock</button>
+            <span id="admin-mode-badge" style="font-size:11px;display:none;background:rgba(248,81,73,.15);color:#f85149;padding:3px 10px;border-radius:10px;font-weight:700">🔐 ADMIN</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">🎨 Appearance</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Choose a color theme. Your preference is saved in this browser.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px" id="theme-swatch-row">
+          <button class="theme-swatch" data-theme="dark"     onclick="setTheme('dark')">🌙 Dark</button>
+          <button class="theme-swatch" data-theme="light"    onclick="setTheme('light')">☀️ Light</button>
+          <button class="theme-swatch" data-theme="neon"     onclick="setTheme('neon')">⚡ Neon</button>
+          <button class="theme-swatch" data-theme="forest"   onclick="setTheme('forest')">🌿 Forest</button>
+          <button class="theme-swatch" data-theme="midnight" onclick="setTheme('midnight')">🌌 Midnight</button>
+          <button class="theme-swatch" data-theme="sunset"   onclick="setTheme('sunset')">🌅 Sunset</button>
+          <button class="theme-swatch" data-theme="ocean"    onclick="setTheme('ocean')">🌊 Ocean</button>
+        </div>
+        <p style="font-size:12px;color:var(--text2)">Current: <strong id="settings-theme-label" style="color:var(--accent)">—</strong></p>
+      </div>
+
+      <!-- Admin-only: Agent Library Sources -->
+      <div class="card admin-only-card" id="admin-sources-card" style="margin-top:16px;display:none">
+        <div class="card-title">🗂️ Agent Library Sources <span style="font-size:11px;background:rgba(248,81,73,.15);color:#f85149;padding:2px 8px;border-radius:8px;margin-left:8px">Admin</span></div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Add GitHub repositories or label-based feeds as browsable sources in the Agent Library. Each source gets its own tab.</p>
+
+        <!-- Existing sources list -->
+        <div id="admin-sources-list" style="margin-bottom:16px"></div>
+
+        <!-- Add new source form -->
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">➕ Add New Source</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Display Name *</label>
+              <input id="src-name" class="chat-input" style="width:100%" placeholder="e.g. Field Operations" />
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Icon (emoji)</label>
+              <input id="src-icon" class="chat-input" style="width:100%" placeholder="🔧" maxlength="4" />
+            </div>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Source Type</label>
+            <select id="src-type" class="forum-modal-select" style="width:100%;max-width:300px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-size:13px" onchange="renderSourceTypeHint()">
+              <option value="github-repo">GitHub Repo — browse agents/*.py files</option>
+              <option value="github-issues">GitHub Issues — agents described as issues with a label</option>
+              <option value="catalog-json">JSON Catalog URL — fetch an agents.json array</option>
+            </select>
+          </div>
+          <div id="src-type-hint" style="font-size:11px;color:var(--text2);margin-bottom:10px"></div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">GitHub Repo or URL *</label>
+            <input id="src-url" class="chat-input" style="width:100%" placeholder="e.g. owner/repo or https://…" />
+          </div>
+          <div style="margin-bottom:10px" id="src-label-row">
+            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Label filter (for issues type)</label>
+            <input id="src-label" class="chat-input" style="width:100%;max-width:280px" placeholder="e.g. agent-listing" />
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Description</label>
+            <input id="src-desc" class="chat-input" style="width:100%" placeholder="Short description shown in the library…" />
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="lib-btn primary" style="padding:8px 20px;font-size:13px" onclick="addLibrarySource()">Add Source</button>
+            <span id="src-save-status" style="font-size:12px;color:var(--green);display:none">✓ Source added!</span>
+          </div>
+        </div>
       </div>
     </div>
 
   </main>
 </div>
 
-<!-- Floating Quick Submit -->
-<button onclick="quickSubmit()" title="Submit a task to the agents" style="position:fixed;bottom:28px;right:28px;width:52px;height:52px;border-radius:50%;background:var(--accent2);border:none;cursor:pointer;font-size:22px;color:white;box-shadow:0 4px 16px #0008;z-index:1000;display:flex;align-items:center;justify-content:center">➕</button>
+<!-- Floating Quick Submit — removed; replaced by Chat intake wizard -->
 
 <script>
 // ── Config — repo and endpoint are hardcoded; only PAT is user-supplied ───────
-const HARDCODED_REPO = '{{REPO}}';
-const HARDCODED_ENDPOINT = '{{AZURE_FUNCTION_ENDPOINT}}';
+const HARDCODED_REPO = 'billwhalenmsft/CommunityRAPP-BillWhalen';
+const HARDCODED_ENDPOINT = 'https://rapp-kt6i6mlby5wzi.azurewebsites.net/api/businessinsightbot_function';
 
 // Migrate: clear any stale localStorage repo/endpoint from old sessions
 if (localStorage.getItem('coe_repo') && localStorage.getItem('coe_repo') !== HARDCODED_REPO) {
@@ -622,6 +1381,210 @@ function saveConfig() {
   loadAll();
 }
 
+// ── Admin mode ─────────────────────────────────────────────────────────────
+const ADMIN_PIN_KEY = 'coe_admin_pin';
+const ADMIN_ACTIVE_KEY = 'coe_admin_active';
+// Default PIN stored in localStorage so admin can change it; default = 'admin'
+let _isAdmin = localStorage.getItem(ADMIN_ACTIVE_KEY) === '1';
+
+function toggleAdminMode() {
+  const input = document.getElementById('cfg-admin-pin');
+  const pin = input?.value?.trim();
+  if (!pin) return;
+  const stored = localStorage.getItem(ADMIN_PIN_KEY) || 'admin';
+  if (pin === stored) {
+    _isAdmin = true;
+    localStorage.setItem(ADMIN_ACTIVE_KEY, '1');
+    input.value = '';
+    applyAdminUI();
+    showLibToast('🔐 Admin mode enabled', '#f85149');
+  } else if (pin === 'lock') {
+    _isAdmin = false;
+    localStorage.removeItem(ADMIN_ACTIVE_KEY);
+    input.value = '';
+    applyAdminUI();
+    showLibToast('🔒 Admin mode disabled', '#8b949e');
+  } else {
+    showLibToast('❌ Incorrect PIN', '#f85149');
+    input.value = '';
+  }
+}
+
+function applyAdminUI() {
+  const badge = document.getElementById('admin-mode-badge');
+  const card  = document.getElementById('admin-sources-card');
+  if (badge) badge.style.display = _isAdmin ? 'inline' : 'none';
+  if (card)  card.style.display  = _isAdmin ? 'block'  : 'none';
+  if (_isAdmin) renderAdminSourcesList();
+}
+
+// ── Agent Library Custom Sources ─────────────────────────────────────────
+const LIB_SOURCES_KEY = 'coe_lib_sources';
+
+// Built-in source definitions (read-only)
+const BUILTIN_SOURCES = [
+  { id: 'coe',       name: 'CoE Team',   icon: '🤖', desc: 'Your 14 core Mfg CoE agents',               builtin: true },
+  { id: 'rar',       name: 'RAR Registry', icon: '⚡', desc: 'Community agent registry',                  builtin: true },
+  { id: 'aibast',    name: 'AIBAST',     icon: '🏭', desc: 'Industry agents from AIBAST accelerator',    builtin: true },
+  { id: 'community', name: 'Community',  icon: '🌐', desc: 'CommunityRAPP template agents',              builtin: true },
+  { id: 'local',     name: 'Local',      icon: '💾', desc: 'Locally installed agents',                   builtin: true },
+];
+
+function _loadCustomSources() {
+  try { return JSON.parse(localStorage.getItem(LIB_SOURCES_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function _saveCustomSources(sources) {
+  localStorage.setItem(LIB_SOURCES_KEY, JSON.stringify(sources));
+}
+
+let _customSources = _loadCustomSources();
+
+function renderAdminSourcesList() {
+  const el = document.getElementById('admin-sources-list');
+  if (!el) return;
+  const allSources = [...BUILTIN_SOURCES, ..._customSources];
+  if (!allSources.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Current Sources</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${allSources.map(s => `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
+          <span style="font-size:18px">${s.icon || '📦'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${s.name}</div>
+            <div style="font-size:11px;color:var(--text2)">${s.desc || ''}${s.type ? ` · ${s.type}` : ''}${s.url ? ` · <code style="font-size:10px">${s.url}</code>` : ''}</div>
+          </div>
+          ${s.builtin
+            ? `<span style="font-size:10px;font-weight:700;color:var(--text2);background:var(--bg2);padding:2px 8px;border-radius:8px">Built-in</span>`
+            : `<button class="lib-btn danger" onclick="removeLibrarySource('${s.id}')">Remove</button>`}
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderSourceTypeHint() {
+  const type = document.getElementById('src-type')?.value;
+  const hint = document.getElementById('src-type-hint');
+  const labelRow = document.getElementById('src-label-row');
+  const urlInput = document.getElementById('src-url');
+  if (!hint) return;
+  if (type === 'github-repo') {
+    hint.textContent = 'Scans the agents/ folder of the repo for .py files and adds them as browsable entries.';
+    if (urlInput) urlInput.placeholder = 'owner/repo';
+    if (labelRow) labelRow.style.display = 'none';
+  } else if (type === 'github-issues') {
+    hint.textContent = 'Fetches GitHub Issues with the specified label — each issue is treated as an agent listing.';
+    if (urlInput) urlInput.placeholder = 'owner/repo';
+    if (labelRow) labelRow.style.display = 'block';
+  } else if (type === 'catalog-json') {
+    hint.textContent = 'Fetches a JSON array from the URL. Each object should have: id, name, icon, desc, category.';
+    if (urlInput) urlInput.placeholder = 'https://example.com/agents.json';
+    if (labelRow) labelRow.style.display = 'none';
+  }
+}
+
+function addLibrarySource() {
+  const name  = document.getElementById('src-name')?.value?.trim();
+  const icon  = document.getElementById('src-icon')?.value?.trim() || '📦';
+  const type  = document.getElementById('src-type')?.value;
+  const url   = document.getElementById('src-url')?.value?.trim();
+  const label = document.getElementById('src-label')?.value?.trim();
+  const desc  = document.getElementById('src-desc')?.value?.trim();
+  if (!name || !url) { showLibToast('⚠️ Name and URL/Repo are required', '#d29922'); return; }
+  // Generate a stable slug ID
+  const id = 'custom-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+  const source = { id, name, icon, type, url, label: label || '', desc: desc || '', builtin: false };
+  _customSources.push(source);
+  _saveCustomSources(_customSources);
+  // Clear form
+  ['src-name','src-icon','src-url','src-label','src-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('src-icon').value = '';
+  renderAdminSourcesList();
+  rebuildLibraryTabs();
+  const status = document.getElementById('src-save-status');
+  if (status) { status.style.display = 'inline'; setTimeout(() => status.style.display = 'none', 3000); }
+  showLibToast(`✅ "${name}" added as a library source`, '#3fb950');
+}
+
+function removeLibrarySource(id) {
+  if (!confirm('Remove this source from the Agent Library?')) return;
+  _customSources = _customSources.filter(s => s.id !== id);
+  _saveCustomSources(_customSources);
+  renderAdminSourcesList();
+  rebuildLibraryTabs();
+  showLibToast('🗑️ Source removed', '#8b949e');
+}
+
+// Rebuild the source tabs + fetch custom source agents into AGENT_CATALOG
+function rebuildLibraryTabs() {
+  const tabsEl = document.getElementById('lib-source-tabs');
+  if (!tabsEl) return;
+  // Built-in tabs
+  const tabs = [
+    { id: 'all', label: 'All Sources' },
+    { id: 'rar', label: '⚡ RAR Registry' },
+    { id: 'aibast', label: '🏭 AIBAST' },
+    { id: 'community', label: '🌐 Community' },
+    { id: 'agent365', label: '🔵 Agent 365' },
+  ];
+  // Custom source tabs
+  _customSources.forEach(s => tabs.push({ id: s.id, label: `${s.icon} ${s.name}` }));
+  tabsEl.innerHTML = tabs.map(t =>
+    `<div class="lib-tab ${libActiveTab === t.id ? 'active' : ''}" data-source="${t.id}" onclick="setLibTab(this,'${t.id}')">${t.label}</div>`
+  ).join('');
+}
+
+async function fetchCustomSourceAgents(source) {
+  const headers = { 'Accept': 'application/vnd.github+json' };
+  if (CFG.pat) headers['Authorization'] = `token ${CFG.pat}`;
+  const existing = new Set(AGENT_CATALOG.map(a => a.id));
+  const newAgents = [];
+  try {
+    if (source.type === 'github-issues') {
+      const label = source.label || 'agent-listing';
+      const r = await fetch(`https://api.github.com/repos/${source.url}/issues?labels=${label}&state=open&per_page=50`, { headers });
+      if (!r.ok) return;
+      const issues = await r.json();
+      issues.forEach(i => {
+        const id = `${source.id}-${i.number}`;
+        if (existing.has(id)) return;
+        newAgents.push({ id, source: source.id, icon: '🤖', name: i.title.replace(/^\[Agent\]\s*/i, ''), category: 'custom', quality: 'community', desc: (i.body || '').slice(0, 200), tags: (i.labels || []).map(l => l.name) });
+      });
+    } else if (source.type === 'github-repo') {
+      const r = await fetch(`https://api.github.com/repos/${source.url}/contents/agents`, { headers });
+      if (!r.ok) return;
+      const files = await r.json();
+      (Array.isArray(files) ? files : []).filter(f => f.name.endsWith('.py') && !f.name.startsWith('_')).forEach(f => {
+        const name = f.name.replace(/_agent\.py$/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const id = `${source.id}-${f.name.replace('.py', '')}`;
+        if (existing.has(id)) return;
+        newAgents.push({ id, source: source.id, icon: '🐍', name, category: 'custom', quality: 'community', desc: `Python agent from ${source.url}`, tags: ['python', 'github'], installCmd: `# from ${source.url}` });
+      });
+    } else if (source.type === 'catalog-json') {
+      const r = await fetch(source.url);
+      if (!r.ok) return;
+      const items = await r.json();
+      (Array.isArray(items) ? items : []).forEach(a => {
+        const id = a.id ? `${source.id}-${a.id}` : `${source.id}-${Math.random().toString(36).slice(2)}`;
+        if (existing.has(id)) return;
+        newAgents.push({ ...a, id, source: source.id });
+      });
+    }
+  } catch { /* silently skip failed sources */ }
+  if (newAgents.length) {
+    AGENT_CATALOG.push(...newAgents);
+    renderLibrary();
+  }
+}
+
+async function loadCustomSources() {
+  rebuildLibraryTabs();
+  for (const s of _customSources) {
+    await fetchCustomSourceAgents(s);
+  }
+}
+
 // ── Navigation ─────────────────────────────────────────────────────────────
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -630,14 +1593,21 @@ function showView(name) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.toLowerCase().includes(name.replace('-', ' '))) n.classList.add('active');
   });
+  // Toggle chat layout mode on the main panel
+  document.querySelector('.main').classList.toggle('chat-mode', name === 'chat');
   if (name === 'backlog') renderBacklog();
   if (name === 'kanban') renderKanban();
   if (name === 'forum') renderForum();
+  if (name === 'outcomes') renderOutcomes();
   if (name === 'environments') renderEnvironments();
   if (name === 'wrapup') renderWrapups();
   if (name === 'charter') renderCharter();
   if (name === 'sops') renderSops();
   if (name === 'knowledge') renderKnowledge();
+  if (name === 'library') renderLibrary();
+  if (name === 'chat') renderChatStarters();
+  if (name === 'achievements') renderAchievements();
+  if (name === 'quick-capture') { validateQcForm(); resetQcForm(); }
 }
 
 // ── GitHub API ─────────────────────────────────────────────────────────────
@@ -728,12 +1698,16 @@ const OUTCOMES = [
 ];
 
 // ── Forum data (fetched from GitHub Issues with community-post label) ────────
-async function fetchForumPosts() {
+let _forumCache = null;
+let _forumFilter = 'all';
+const _forumExpanded = new Map(); // issueNum → {comments, loaded}
+
+async function fetchForumPosts(label = 'community-post') {
   const headers = { 'Accept': 'application/vnd.github+json' };
   if (CFG.pat) headers['Authorization'] = `token ${CFG.pat}`;
   try {
     const r = await fetch(
-      `https://api.github.com/repos/${CFG.repo}/issues?labels=community-post&state=open&per_page=50&sort=created&direction=desc`,
+      `https://api.github.com/repos/${CFG.repo}/issues?labels=${label}&state=open&per_page=100&sort=updated&direction=desc`,
       { headers }
     );
     if (!r.ok) return null;
@@ -742,22 +1716,264 @@ async function fetchForumPosts() {
 }
 
 function ghIssueTopic(issue) {
-  const agentIcons = { 'SME': '🏭', 'Architect': '🏗️', 'Developer': '🧑‍💻', 'PM': '🗂️',
-    'Orchestrator': '⚙️', 'Community': '🎉', 'Bill': '👤' };
   const author = issue.user?.login === 'github-actions[bot]' ? 'Agent Bot' : (issue.user?.login || 'Agent');
-  const icon = Object.entries(agentIcons).find(([k]) => issue.title?.includes(k) || issue.body?.includes(k))?.[1] || '🤖';
-  const tags = (issue.labels || []).map(l => l.name).filter(n => n !== 'community-post');
+  const isBot = issue.user?.login === 'github-actions[bot]';
+  const tags = (issue.labels || []).map(l => l.name);
+  const catTag = tags.find(t => ['idea','sop','tech','needs-bill','agent-task','done','community-post'].includes(t));
   const created = new Date(issue.created_at);
-  const diff = Math.floor((Date.now() - created) / 3600000);
+  const updated = new Date(issue.updated_at);
+  const diff = Math.floor((Date.now() - updated) / 3600000);
   const time = diff < 1 ? 'just now' : diff < 24 ? `${diff}h ago` : `${Math.floor(diff/24)}d ago`;
-  return { id: issue.number, author, icon, title: issue.title, body: issue.body || '', replies: issue.comments, time, tags, url: issue.html_url };
+  let icon = isBot ? '🤖' : '👤';
+  if (author.includes('bill') || author.includes('whalen')) icon = '👤';
+  const bodyLines = (issue.body || '').split('\n');
+  const preview = bodyLines.slice(0,3).join(' ').replace(/[#*`]/g,'').trim().slice(0,160);
+  return { id: issue.number, author, icon, isBot, title: issue.title, body: issue.body || '',
+    preview, replies: issue.comments, time, tags, catTag, url: issue.html_url };
 }
 
-// ── Render helpers ──────────────────────────────────────────────────────────
+const FORUM_CATS = {
+  'idea':           { label: '💡 Idea',       bg: '#58a6ff22', color: '#58a6ff' },
+  'sop':            { label: '📄 SOP',        bg: '#3fb95022', color: '#3fb950' },
+  'tech':           { label: '🛠️ Tech',       bg: '#bc8cff22', color: '#bc8cff' },
+  'needs-bill':     { label: '🔔 Needs Bill', bg: '#ffa65722', color: '#ffa657' },
+  'agent-task':     { label: '🤖 Task',       bg: '#58a6ff22', color: '#58a6ff' },
+  'done':           { label: '✅ Done',       bg: '#3fb95022', color: '#3fb950' },
+  'community-post': { label: '💬 General',    bg: '#d2992222', color: '#d29922' },
+};
+
+function forumCatBadge(catTag) {
+  const cat = FORUM_CATS[catTag] || FORUM_CATS['community-post'];
+  return `<span class="forum-cat-badge" style="background:${cat.bg};color:${cat.color}">${cat.label}</span>`;
+}
+
+function forumFilter(filter, btn) {
+  _forumFilter = filter;
+  document.querySelectorAll('.forum-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderForumList(_forumCache);
+}
+
+async function renderForum() {
+  const el = document.getElementById('forum-topics');
+  el.innerHTML = '<p style="color:var(--text2);padding:16px 0">⏳ Loading forum posts…</p>';
+  _forumCache = await fetchForumPosts();
+  if (_forumCache === null) {
+    el.innerHTML = '<p style="color:var(--text2);padding:16px 0">⚠️ Could not load forum — check your PAT in Settings.</p>';
+    return;
+  }
+  renderForumList(_forumCache);
+}
+
+function renderForumList(issues) {
+  const el = document.getElementById('forum-topics');
+  if (!issues) return;
+  let list = issues;
+  if (_forumFilter !== 'all') list = issues.filter(i => (i.labels||[]).some(l => l.name === _forumFilter));
+  if (!list.length) {
+    el.innerHTML = '<p style="color:var(--text2);padding:16px 0">No posts in this category yet. Agents will start posting soon! 🤖</p>';
+    return;
+  }
+  const topics = list.map(ghIssueTopic);
+  el.innerHTML = topics.map(t => `
+    <div class="forum-thread" id="ft-${t.id}">
+      <div class="forum-thread-header" onclick="toggleForumThread(${t.id})">
+        <div class="forum-avatar" style="${t.isBot ? 'background:rgba(88,166,255,.1);border-color:rgba(88,166,255,.3)' : ''}">${t.icon}</div>
+        <div class="forum-body">
+          <div class="forum-topic-title">${escHtml(t.title)}</div>
+          <div class="forum-topic-meta">
+            ${forumCatBadge(t.catTag)}
+            <strong>${escHtml(t.author)}</strong>
+            <span>·</span>
+            <span>${t.time}</span>
+            ${t.tags.filter(tag=>tag!==t.catTag&&tag!=='community-post').slice(0,3).map(tag=>`<span class="feed-label" style="background:${labelColor(tag)}22;color:${labelColor(tag)}">${tag}</span>`).join('')}
+          </div>
+          ${t.preview ? `<div style="font-size:11px;color:var(--text2);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(t.preview)}</div>` : ''}
+        </div>
+        <div class="forum-stats">
+          <span class="forum-reply-count">${t.replies}</span>
+          <span>replies</span>
+          <a href="${t.url}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;color:var(--accent2);margin-top:4px">GitHub ↗</a>
+        </div>
+      </div>
+      <div class="forum-thread-body ${_forumExpanded.has(t.id) ? 'open' : ''}" id="ftb-${t.id}">
+        ${renderForumThreadBody(t)}
+      </div>
+    </div>`).join('');
+  // Re-open any previously expanded threads
+  _forumExpanded.forEach((_, id) => {
+    const bodyEl = document.getElementById(`ftb-${id}`);
+    if (bodyEl && bodyEl.querySelector('.forum-comments-wrap p')?.textContent.includes('⏳')) {
+      loadForumComments(id);
+    }
+  });
+}
+
+function escHtml(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderForumThreadBody(t) {
+  const state = _forumExpanded.get(t.id);
+  return `
+    <div class="forum-post-content">${escHtml(t.body).slice(0, 2000)}</div>
+    <div class="forum-comments-wrap" id="fc-${t.id}">
+      ${state ? renderForumComments(state.comments) : '<p style="color:var(--text2);font-size:12px">⏳ Loading comments…</p>'}
+    </div>
+    <div class="forum-reply-box">
+      <textarea class="forum-reply-input" id="fri-${t.id}" placeholder="Reply to this thread… (requires PAT in Settings)" oninput="document.getElementById('frs-${t.id}').disabled=!this.value.trim()"></textarea>
+      <button class="forum-reply-send" id="frs-${t.id}" disabled onclick="postForumReply(${t.id})">Send</button>
+    </div>`;
+}
+
+function renderForumComments(comments) {
+  if (!comments || !comments.length) return '<p style="font-size:12px;color:var(--text2);margin-bottom:12px">No replies yet — be the first!</p>';
+  return `<div class="forum-comments">${comments.map(c => {
+    const isBot = c.user?.login === 'github-actions[bot]';
+    const author = isBot ? 'Agent Bot' : (c.user?.login || 'Agent');
+    const diff = Math.floor((Date.now()-new Date(c.created_at))/3600000);
+    const time = diff < 1 ? 'just now' : diff < 24 ? `${diff}h ago` : `${Math.floor(diff/24)}d ago`;
+    return `<div class="forum-comment">
+      <div class="forum-comment-avatar" style="${isBot ? 'background:rgba(88,166,255,.1);border-color:rgba(88,166,255,.3)' : ''}">${isBot ? '🤖' : '👤'}</div>
+      <div class="forum-comment-bubble">
+        <div class="forum-comment-meta"><strong>${escHtml(author)}</strong> · ${time}</div>
+        <div class="forum-comment-text">${escHtml((c.body||'').slice(0,1000))}</div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+async function toggleForumThread(issueNum) {
+  const bodyEl = document.getElementById(`ftb-${issueNum}`);
+  if (!bodyEl) return;
+  if (bodyEl.classList.contains('open')) {
+    bodyEl.classList.remove('open');
+    _forumExpanded.delete(issueNum);
+    return;
+  }
+  bodyEl.classList.add('open');
+  _forumExpanded.set(issueNum, null);
+  await loadForumComments(issueNum);
+}
+
+async function loadForumComments(issueNum) {
+  const wrapEl = document.getElementById(`fc-${issueNum}`);
+  if (!wrapEl) return;
+  const headers = { 'Accept': 'application/vnd.github+json' };
+  if (CFG.pat) headers['Authorization'] = `token ${CFG.pat}`;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${CFG.repo}/issues/${issueNum}/comments?per_page=50`, { headers });
+    if (!r.ok) { wrapEl.innerHTML = '<p style="color:var(--text2);font-size:12px">⚠️ Could not load comments.</p>'; return; }
+    const comments = await r.json();
+    _forumExpanded.set(issueNum, { comments });
+    wrapEl.innerHTML = renderForumComments(comments);
+  } catch { wrapEl.innerHTML = '<p style="color:var(--text2);font-size:12px">⚠️ Network error loading comments.</p>'; }
+}
+
+async function postForumReply(issueNum) {
+  if (!CFG.pat) { alert('Set your GitHub PAT in Settings to post replies.'); return; }
+  const input = document.getElementById(`fri-${issueNum}`);
+  const btn = document.getElementById(`frs-${issueNum}`);
+  const text = input?.value?.trim();
+  if (!text) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  const headers = { 'Accept': 'application/vnd.github+json', 'Authorization': `token ${CFG.pat}`, 'Content-Type': 'application/json' };
+  try {
+    const r = await fetch(`https://api.github.com/repos/${CFG.repo}/issues/${issueNum}/comments`, {
+      method: 'POST', headers, body: JSON.stringify({ body: text })
+    });
+    if (r.ok) {
+      input.value = '';
+      btn.textContent = '✓ Sent';
+      setTimeout(() => { btn.textContent = 'Send'; }, 2000);
+      await loadForumComments(issueNum);
+    } else {
+      btn.textContent = 'Send';
+      btn.disabled = false;
+      alert('Could not post reply — check PAT permissions (needs `issues: write`).');
+    }
+  } catch { btn.textContent = 'Send'; btn.disabled = false; alert('Network error.'); }
+}
+
+// ── New Forum Topic modal ──────────────────────────────────────────────────
+function openForumNewTopic() {
+  if (document.getElementById('forum-modal')) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'forum-modal-overlay';
+  overlay.id = 'forum-modal';
+  overlay.innerHTML = `
+    <div class="forum-modal" onclick="event.stopPropagation()">
+      <h2>✏️ New Forum Topic</h2>
+      <div class="forum-modal-field">
+        <label>Category</label>
+        <select class="forum-modal-select" id="fm-cat">
+          <option value="community-post">💬 General Discussion</option>
+          <option value="idea">💡 Idea / Feature Request</option>
+          <option value="sop">📄 SOP / Process</option>
+          <option value="tech">🛠️ Tech Solution</option>
+        </select>
+      </div>
+      <div class="forum-modal-field">
+        <label>Title <span style="color:#f85149">*</span></label>
+        <input class="forum-modal-input" id="fm-title" placeholder="Clear, descriptive title…" oninput="fmValidate()" />
+      </div>
+      <div class="forum-modal-field">
+        <label>Body <span style="color:#f85149">*</span></label>
+        <textarea class="forum-modal-textarea" id="fm-body" placeholder="Describe your idea, question, or proposal…" oninput="fmValidate()"></textarea>
+      </div>
+      <div class="forum-modal-actions">
+        <button class="forum-modal-cancel" onclick="closeForumModal()">Cancel</button>
+        <button class="forum-modal-submit" id="fm-submit" disabled onclick="submitForumTopic()">Post Topic</button>
+      </div>
+    </div>`;
+  overlay.onclick = closeForumModal;
+  document.body.appendChild(overlay);
+  document.getElementById('fm-title').focus();
+}
+
+function fmValidate() {
+  const title = document.getElementById('fm-title')?.value?.trim();
+  const body  = document.getElementById('fm-body')?.value?.trim();
+  const btn   = document.getElementById('fm-submit');
+  if (btn) btn.disabled = !(title && body);
+}
+
+function closeForumModal() {
+  document.getElementById('forum-modal')?.remove();
+}
+
+async function submitForumTopic() {
+  if (!CFG.pat) { alert('Set your GitHub PAT in Settings first.'); return; }
+  const title  = document.getElementById('fm-title')?.value?.trim();
+  const body   = document.getElementById('fm-body')?.value?.trim();
+  const cat    = document.getElementById('fm-cat')?.value || 'community-post';
+  if (!title || !body) return;
+  const btn = document.getElementById('fm-submit');
+  btn.disabled = true;
+  btn.textContent = 'Posting…';
+  const labels = ['community-post', 'mfg-coe'];
+  if (cat !== 'community-post') labels.push(cat);
+  const headers = { 'Accept': 'application/vnd.github+json', 'Authorization': `token ${CFG.pat}`, 'Content-Type': 'application/json' };
+  try {
+    const r = await fetch(`https://api.github.com/repos/${CFG.repo}/issues`, {
+      method: 'POST', headers, body: JSON.stringify({ title, body, labels })
+    });
+    if (r.ok) {
+      closeForumModal();
+      _forumCache = null;
+      await renderForum();
+    } else {
+      btn.textContent = 'Post Topic';
+      btn.disabled = false;
+      alert('Could not create post — check PAT permissions.');
+    }
+  } catch { btn.textContent = 'Post Topic'; btn.disabled = false; alert('Network error.'); }
+}
 function labelColor(name) {
   if (name.includes('p1')) return '#f85149';
   if (name.includes('p2')) return '#d29922';
-  if (name.includes('p3') || name === '{{TEAM_LABEL}}') return '#58a6ff';
+  if (name.includes('p3') || name === 'mfg-coe') return '#58a6ff';
   if (name.includes('needs-bill')) return '#ffa657';
   if (name.includes('done')) return '#3fb950';
   if (name.includes('agent-task')) return '#bc8cff';
@@ -767,7 +1983,7 @@ function labelColor(name) {
 
 function renderIssueRow(issue) {
   const labelHtml = (issue.labels || [])
-    .filter(l => !['{{TEAM_LABEL}}'].includes(l.name))
+    .filter(l => !['mfg-coe'].includes(l.name))
     .slice(0, 3)
     .map(l => `<span class="feed-label" style="background:${labelColor(l.name)}22;color:${labelColor(l.name)}">${l.name}</span>`)
     .join('');
@@ -835,7 +2051,7 @@ async function loadAll() {
 
   // Update KPIs
   document.getElementById('kpi-active').textContent = ALL_ISSUES.length;
-  document.getElementById('kpi-agents').textContent = '7';
+  document.getElementById('kpi-agents').textContent = AGENTS.length;
   document.getElementById('kpi-decisions').textContent = needsBill.length;
   document.getElementById('needs-bill-count').textContent = needsBill.length;
 
@@ -848,7 +2064,6 @@ async function loadAll() {
   renderAgents();
   renderDashFeed(ALL_ISSUES.slice(0, 5));
   renderNeedsBill(needsBill);
-  renderOutcomes();
   renderForum();
   renderChatAgentSelector();
   renderCharter(); // preload so it's ready when user clicks
@@ -895,68 +2110,94 @@ function renderBacklog() {
   document.getElementById('backlog-list').innerHTML = html || '<p style="color:var(--text2);font-size:13px">No items match the current filters.</p>';
 }
 
-function renderOutcomes() {
-  const html = OUTCOMES.map(o => `
-    <div class="outcome-card">
+async function renderOutcomes() {
+  const el = document.getElementById('outcomes-list');
+  el.innerHTML = '<p style="color:var(--text2)">⏳ Loading live issue data...</p>';
+
+  // Fetch all mfg-coe issues (open + closed) to calculate real progress
+  const headers = { 'Accept': 'application/vnd.github+json' };
+  if (CFG.pat) headers['Authorization'] = `token ${CFG.pat}`;
+  let allIssues = [];
+  try {
+    const [openR, closedR] = await Promise.all([
+      fetch(`https://api.github.com/repos/${CFG.repo}/issues?labels=mfg-coe&state=open&per_page=100`, { headers }),
+      fetch(`https://api.github.com/repos/${CFG.repo}/issues?labels=mfg-coe&state=closed&per_page=100`, { headers }),
+    ]);
+    const open = openR.ok ? await openR.json() : [];
+    const closed = closedR.ok ? await closedR.json() : [];
+    allIssues = [...open.map(i => ({...i, _state:'open'})), ...closed.map(i => ({...i, _state:'closed'}))];
+  } catch(e) {
+    el.innerHTML = `<p style="color:var(--text2)">⚠️ Could not load live data — check PAT in Settings.</p>`;
+    return;
+  }
+
+  // Map issue numbers to state for fast lookup
+  const issueMap = {};
+  allIssues.forEach(i => { issueMap[i.number] = i; });
+
+  // Use getAllOutcomes() to include custom outcomes
+  const allOutcomes = getAllOutcomes();
+  const customIds = new Set(_loadCustomOutcomes().map(o => o.id));
+
+  const enriched = allOutcomes.map(o => {
+    const linked = (o.issues||[]).map(n => issueMap[n]).filter(Boolean);
+    const total = linked.length || 1;
+    const done = linked.filter(i => i._state === 'closed').length;
+    const progress = o.status === 'achieved' ? 100 : Math.round((done / total) * 100);
+    return { ...o, linked, done, total: linked.length, progress, _isCustom: customIds.has(o.id) };
+  });
+
+  // Update top KPIs
+  const totalOpen = allIssues.filter(i => i._state === 'open').length;
+  const totalClosed = allIssues.filter(i => i._state === 'closed').length;
+  const overallPct = allIssues.length ? Math.round((totalClosed / allIssues.length) * 100) : 0;
+  document.getElementById('okpi-total').textContent = allOutcomes.length;
+  document.getElementById('okpi-active').textContent = totalOpen;
+  document.getElementById('okpi-done').textContent = totalClosed;
+  document.getElementById('okpi-pct').textContent = overallPct + '%';
+
+  // Sort: achieved last, in-progress first, then by priority
+  enriched.sort((a, b) => {
+    if (a.status === 'achieved' && b.status !== 'achieved') return 1;
+    if (b.status === 'achieved' && a.status !== 'achieved') return -1;
+    if (b.progress !== a.progress && (b.progress > 0 || a.progress > 0)) return b.progress - a.progress;
+    return (a.priority > b.priority ? 1 : -1);
+  });
+
+  el.innerHTML = enriched.map(o => {
+    const statusDot = o.status === 'achieved' ? '✅' : o.status === 'paused' ? '⏸' : o.progress > 0 ? '🔄' : '⏳';
+    const priorityColor = o.priority === 'p1' ? 'var(--red)' : o.priority === 'p2' ? 'var(--yellow)' : 'var(--text2)';
+    const issueChips = o.linked.length
+      ? o.linked.map(i => `<a class="outcome-issue ${i._state === 'closed' ? 'closed' : ''}" href="${i.html_url}" target="_blank">#${i.number} ${i.title.slice(0,30)}${i.title.length>30?'…':''}</a>`).join('')
+      : (o.issues||[]).map(n => `<a class="outcome-issue" href="https://github.com/${CFG.repo}/issues/${n}" target="_blank">#${n}</a>`).join('');
+    const noDataNote = !o.linked.length && (o.issues||[]).length ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">⚠️ Issues #${o.issues.join(', #')} not found — may be closed or in a different repo</div>` : '';
+    const statusBadge = o.status && o.status !== 'active' ? `<span class="outcome-status-badge ${o.status}">${o.status === 'achieved' ? '✅ Achieved' : '⏸ Paused'}</span>` : '';
+    const editBtns = `<div class="outcome-card-actions">
+      <button class="outcome-edit-btn" onclick="event.stopPropagation();openOutcomeModal('${o.id}')" title="Edit outcome">✏️</button>
+      ${o._isCustom ? `<button class="outcome-del-btn" onclick="event.stopPropagation();deleteOutcome('${o.id}')" title="Delete outcome">🗑</button>` : ''}
+    </div>`;
+    return `<div class="outcome-card">
       <div class="outcome-title">
+        <span>${statusDot}</span>
         <span>${o.icon}</span>
         <span>${o.title}</span>
-        <span class="tag ${o.priority}">${o.priority.toUpperCase()}</span>
+        ${statusBadge}
+        <span style="font-size:11px;color:${priorityColor};font-weight:600;margin-left:${statusBadge?'6px':'auto'}">${(o.priority||'p2').toUpperCase()}</span>
+        ${editBtns}
       </div>
       <div class="outcome-desc">${o.desc}</div>
-      <div class="outcome-issues">
-        ${o.issues.map(n => `<span class="outcome-issue" onclick="window.open('https://github.com/${CFG.repo}/issues/${n}','_blank')">#${n}</span>`).join('')}
+      <div class="outcome-meta">
+        <div class="outcome-issues">${issueChips}</div>
+        <div class="outcome-stats">${o.done}/${o.total} issues closed</div>
       </div>
+      ${noDataNote}
       <div class="progress-bar"><div class="progress-fill" style="width:${o.progress}%"></div></div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px">${o.progress}% complete</div>
-    </div>`).join('');
-  document.getElementById('outcomes-list').innerHTML = html;
-}
-
-async function renderForum() {
-  const el = document.getElementById('forum-topics');
-  el.innerHTML = '<p style="color:var(--text2)">⏳ Loading forum posts...</p>';
-  const issues = await fetchForumPosts();
-  if (!issues) {
-    el.innerHTML = '<p style="color:var(--text2)">⚠️ Could not load forum — check your PAT in Settings.</p>';
-    return;
-  }
-  if (!issues.length) {
-    el.innerHTML = '<p style="color:var(--text2)">No community posts yet. Agents will start posting soon! 🤖</p>';
-    return;
-  }
-  const topics = issues.map(ghIssueTopic);
-  const html = topics.map(t => `
-    <a href="${t.url}" target="_blank" style="text-decoration:none;color:inherit">
-    <div class="forum-topic">
-      <div class="forum-avatar">${t.icon}</div>
-      <div class="forum-body">
-        <div class="forum-topic-title">${t.title}</div>
-        <div class="forum-topic-meta">
-          <strong>${t.author}</strong> · ${t.time}
-          ${t.tags.map(tag => `<span class="feed-label" style="background:${labelColor(tag)}22;color:${labelColor(tag)}">${tag}</span>`).join('')}
-        </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px;display:flex;justify-content:space-between">
+        <span>${o.progress}% complete</span>
+        ${o.progress < 100 && o.status !== 'paused' ? `<button onclick="showView('chat');selectAgent('orchestrator')" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:0">Ask an agent to work on this →</button>` : ''}
       </div>
-      <div class="forum-stats">${t.replies} replies</div>
-    </div>
-    </a>`).join('');
-  el.innerHTML = html;
-}
-
-async function newForumTopic() {
-  const title = prompt('Forum topic title:');
-  if (!title) return;
-  const body = prompt('Post body / description:');
-  if (!CFG.pat) { alert('No PAT set — go to Settings first.'); return; }
-  const headers = { 'Accept': 'application/vnd.github+json', 'Authorization': `token ${CFG.pat}`, 'Content-Type': 'application/json' };
-  try {
-    const r = await fetch(`https://api.github.com/repos/${CFG.repo}/issues`, {
-      method: 'POST', headers,
-      body: JSON.stringify({ title, body: body || '', labels: ['community-post', '{{TEAM_LABEL}}'] })
-    });
-    if (r.ok) { await renderForum(); }
-    else { alert('Could not create post — check your PAT permissions.'); }
-  } catch { alert('Network error.'); }
+    </div>`;
+  }).join('');
 }
 
 // ── Daily Wrap-Up ────────────────────────────────────────────────────────────
@@ -1020,7 +2261,7 @@ function md2html(md) {
 
 async function renderCharter() {
   const el = document.getElementById('charter-content');
-  const md = await fetchRaw('{{CHARTER_PATH}}');
+  const md = await fetchRaw('customers/mfg_coe/COE_CHARTER.md');
   el.innerHTML = md ? md2html(md) : '<p style="color:var(--text2)">⚠️ Could not load — check PAT.</p>';
 }
 
@@ -1053,8 +2294,8 @@ async function renderSops() {
 
 async function renderKnowledge() {
   const [master, gold] = await Promise.all([
-    fetchRaw('{{KB_PATH_1}}'),
-    fetchRaw('{{KB_PATH_2}}'),
+    fetchRaw('customers/mfg_coe/knowledge_base/master_ce_mfg.md'),
+    fetchRaw('customers/mfg_coe/knowledge_base/mfg_gold_template.md'),
   ]);
   document.getElementById('kb-master').innerHTML = master
     ? md2html(master.split('## Known Entities')[0].split('## Key Characteristics')[1] || master.substring(0, 600))
@@ -1074,8 +2315,8 @@ async function triggerInventoryRun() {
     method: 'POST', headers,
     body: JSON.stringify({
       title: '🔍 [Inventory] Auto-catalog D365 environments — Master CE Mfg + Mfg Gold Template',
-      labels: ['{{TEAM_LABEL}}', 'tech-solution', 'p1-critical'],
-      body: `## Task\nThe Architect Agent should connect to the two primary D365 environments and build comprehensive context cards:\n\n**Master CE Mfg** (\`https://orgecbce8ef.crm.dynamics.com/\`)\n**Mfg Gold Template** (\`https://org6feab6b5.crm.dynamics.com/\`)\n\n## What to catalog\n- [ ] Installed solutions and customizations\n- [ ] Custom entities and key standard entities in use\n- [ ] Active Copilot Studio agents\n- [ ] Power Automate flows\n- [ ] Sample accounts/cases data summary\n- [ ] Active users and security roles\n- [ ] Key business processes configured\n\n## Output\nUpdate \`{{KB_PATH_1}}\` and \`mfg_gold_template.md\` via PR.\n\nTriggered from bots-in-blazers.fun Knowledge Base tab.`
+      labels: ['mfg-coe', 'tech-solution', 'p1-critical'],
+      body: `## Task\nThe Architect Agent should connect to the two primary D365 environments and build comprehensive context cards:\n\n**Master CE Mfg** (\`https://orgecbce8ef.crm.dynamics.com/\`)\n**Mfg Gold Template** (\`https://org6feab6b5.crm.dynamics.com/\`)\n\n## What to catalog\n- [ ] Installed solutions and customizations\n- [ ] Custom entities and key standard entities in use\n- [ ] Active Copilot Studio agents\n- [ ] Power Automate flows\n- [ ] Sample accounts/cases data summary\n- [ ] Active users and security roles\n- [ ] Key business processes configured\n\n## Output\nUpdate \`customers/mfg_coe/knowledge_base/master_ce_mfg.md\` and \`mfg_gold_template.md\` via PR.\n\nTriggered from bots-in-blazers.fun Knowledge Base tab.`
     })
   });
   if (r.ok) { st.textContent = '✅ Issue created — agents will process on next run_backlog'; }
@@ -1090,7 +2331,7 @@ async function quickSubmit() {
   const headers = { 'Accept': 'application/vnd.github+json', 'Authorization': `token ${CFG.pat}`, 'Content-Type': 'application/json' };
   const r = await fetch(`https://api.github.com/repos/${HARDCODED_REPO}/issues`, {
     method: 'POST', headers,
-    body: JSON.stringify({ title, labels: ['{{TEAM_LABEL}}', 'tech-solution', 'p2-high'], body: `Submitted via bots-in-blazers.fun quick-submit.\n\n_Agents will pick this up on next scheduled run._` })
+    body: JSON.stringify({ title, labels: ['mfg-coe', 'tech-solution', 'p2-high'], body: `Submitted via bots-in-blazers.fun quick-submit.\n\n_Agents will pick this up on next scheduled run._` })
   });
   if (r.ok) {
     const issue = await r.json();
@@ -1100,11 +2341,18 @@ async function quickSubmit() {
 
 // ── D365 Environments ─────────────────────────────────────────────────────────
 const D365_ENVS = [
-  // TODO: Add your environments here. Set primary:true for featured ones.
-  // Example:
-  // { name: 'My Primary Env', url: 'https://your-org.crm.dynamics.com/', primary: true, tags: ['crm', 'primary'] },
-  // { name: 'My Sandbox', url: 'https://your-sandbox.crm.dynamics.com/', primary: false, tags: ['sandbox'] },
-  {{ENVIRONMENTS}}
+  { name: 'Master CE Mfg', url: 'https://orgecbce8ef.crm.dynamics.com/', primary: true, tags: ['mfg', 'crm', 'primary'] },
+  { name: 'Mfg Gold Template', url: 'https://org6feab6b5.crm.dynamics.com/', primary: true, tags: ['mfg', 'template', 'gold'] },
+  { name: 'Field Service and Manufacturing', url: 'https://org334af944.crm.dynamics.com/', primary: false, tags: ['mfg', 'field-service'] },
+  { name: 'FY25 Master CE Mfg - Early Release', url: 'https://org10402bbd.crm.dynamics.com/', primary: false, tags: ['mfg', 'preview'] },
+  { name: 'D365 Contact Center', url: 'https://orgb89b3114.crm.dynamics.com/', primary: false, tags: ['contact-center'] },
+  { name: 'Dynamics 365 CCaaS', url: 'https://orgbee5951e.crm.dynamics.com/', primary: false, tags: ['ccaas'] },
+  { name: 'Finance and Operations', url: 'https://financeandoperations.crm.dynamics.com/', primary: false, tags: ['f&o', 'erp'] },
+  { name: 'Bryan Demo', url: 'https://org13139c28.crm.dynamics.com/', primary: false, tags: ['demo'] },
+  { name: 'Contoso (default)', url: 'https://org0583f82e.crm.dynamics.com/', primary: false, tags: ['default'] },
+  { name: 'Low Code', url: 'https://org52045311.crm.dynamics.com/', primary: false, tags: ['power-platform'] },
+  { name: 'Microsoft 365', url: 'https://orgb6810f4b.crm.dynamics.com/', primary: false, tags: ['m365'] },
+  { name: 'Power Platform Preview', url: 'https://orgbwpwrprev0325.crm.dynamics.com/', primary: false, tags: ['preview'] },
 ];
 
 function envCard(e) {
@@ -1126,9 +2374,33 @@ function renderEnvironments() {
   document.getElementById('env-all').innerHTML = all.map(envCard).join('');
 }
 
+// ── Chat markdown renderer ────────────────────────────────────────────────
+function chatMd(text) {
+  let h = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_,lang,code) =>
+    `<pre><code>${code.trimEnd()}</code></pre>`);
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  h = h.replace(/^---$/gm, '<hr>');
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  h = h.replace(/((?:^- .+\n?)+)/gm, match =>
+    '<ul>' + match.replace(/^- (.+)$/gm, '<li>$1</li>') + '</ul>');
+  h = h.replace(/((?:^\d+\. .+\n?)+)/gm, match =>
+    '<ol>' + match.replace(/^\d+\. (.+)$/gm, '<li>$1</li>') + '</ol>');
+  h = h.replace(/\n\n/g, '</p><p>');
+  h = h.replace(/\n/g, '<br>');
+  return `<p>${h}</p>`;
+}
+
 // ── Chat ───────────────────────────────────────────────────────────────────
 let activeAgent = 'orchestrator';
 const CHAT_HISTORY = {};
+let chatBusy = false;
 
 function renderChatAgentSelector() {
   const html = AGENTS.map(a => `
@@ -1136,60 +2408,387 @@ function renderChatAgentSelector() {
   document.getElementById('chat-agent-selector').innerHTML = html;
 }
 
+function updateActiveAgentHeader() {
+  const agent = AGENTS.find(a => a.id === activeAgent);
+  if (!agent) return;
+  document.getElementById('chat-active-avatar').textContent = agent.icon;
+  document.getElementById('chat-active-name').textContent = agent.name;
+  document.getElementById('chat-active-role').textContent = agent.role || 'CoE Agent';
+  const hint = document.getElementById('chat-agent-hint');
+  if (hint) hint.innerHTML = `Talking to: <strong>${agent.icon} ${agent.name}</strong>`;
+}
+
 function selectAgent(id) {
   activeAgent = id;
   renderChatAgentSelector();
+  updateActiveAgentHeader();
+  renderChatMessages();  // renderChatStarters called inside
+}
+
+function clearChat() {
+  delete CHAT_HISTORY[activeAgent];
+  const header = document.getElementById('chat-active-header');
+  if (header) header.classList.remove('visible');
   renderChatMessages();
 }
 
 function renderChatMessages() {
   const msgs = CHAT_HISTORY[activeAgent] || [];
+  renderChatStarters();
+  const header = document.getElementById('chat-active-header');
+  if (header) header.classList.toggle('visible', msgs.length > 0);
   if (!msgs.length) {
-    const agent = AGENTS.find(a => a.id === activeAgent);
-    document.getElementById('chat-messages').innerHTML = `
-      <div class="chat-bubble bot">
-        <div class="from">${agent?.icon} ${agent?.name}</div>
-        Hello, Bill. I'm the ${agent?.name} agent. How can I help?
-      </div>`;
+    document.getElementById('chat-messages').innerHTML = '';
     return;
   }
-  document.getElementById('chat-messages').innerHTML = msgs.map(m => `
-    <div class="chat-bubble ${m.role}">
+  document.getElementById('chat-messages').innerHTML = msgs.map((m, i) => {
+    const isBot = m.role === 'bot';
+    const content = isBot ? chatMd(m.text) : m.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const createBtn = isBot ? `<button class="chat-create-issue" onclick="createIssueFromChat(${i})">📋 Track this in GitHub</button>` : '';
+    return `<div class="chat-bubble ${m.role}">
       <div class="from">${m.from}</div>
-      ${m.text}
-    </div>`).join('');
+      ${content}${createBtn}
+    </div>`;
+  }).join('');
 }
+
+function renderChatStarters() {
+  const msgs = CHAT_HISTORY[activeAgent] || [];
+  const intakeOpen = document.getElementById('chat-intake-section')?.style.display !== 'none';
+  if (intakeOpen) return;  // don't override intake
+  const section = document.getElementById('chat-starters-section');
+  if (section) section.style.display = msgs.length === 0 ? 'block' : 'none';
+}
+
+// STARTER_PROMPTS — kept as fallback for direct use
+const STARTER_PROMPTS = {
+  'D365 Demo': `Create a new D365 demo for [customer name] (website: [customer website URL]) for this use case: [describe the use case]. The demo is for [Sales / Marketing / Customer Service / CCaaS / Field Service]. Please ask me questions to understand the customer context and help set it up.`,
+  'Power Platform': `Build a Power Platform solution that does the following: [describe what you need]. This could involve Power Apps, Copilot Studio agents, Power Automate flows, Power Pages, or other Power Platform technology. Please ask me clarifying questions to define scope and approach.`,
+  'RAPP': `Use RAPP to rapidly prototype an agentic use case with me. The use case I want to explore is: [describe your use case and goals]. Let's go through the discovery questions and define what agents we need, what they'll do, and how to build them fast.`,
+  'CoE': `Help me set up a Center of Excellence for [team / domain / industry]. Walk me through defining the mission, the right agent personas to include, SOP structure, feature capture process, and recommended tooling. Ask me questions along the way to customize it for my situation.`,
+};
+
+function useStarterPrompt(key) {
+  const text = STARTER_PROMPTS[key];
+  if (!text) return;
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.value = text;
+    input.style.height = '44px';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    input.focus();
+    const firstPlaceholder = text.indexOf('[');
+    const firstEnd = text.indexOf(']');
+    if (firstPlaceholder !== -1 && firstEnd !== -1) {
+      input.setSelectionRange(firstPlaceholder, firstEnd + 1);
+    }
+  }
+}
+
+// ── Intake Forms ──────────────────────────────────────────────────────────────
+// Discovery questions by discipline. Add new forms here — no other code changes needed.
+const INTAKE_FORMS = {
+  'D365 Demo': {
+    icon: '🏭', color: '#0078d4', bgColor: 'rgba(0,120,212,0.12)',
+    title: 'Set up a D365 Demo',
+    subtitle: 'A few details so I can prep a tailored, insight-led demo for your customer',
+    fields: [
+      { id: 'customer', label: 'Customer Name', type: 'text', required: true, placeholder: 'e.g. Zurn Elkay Water Solutions' },
+      { id: 'website',  label: 'Customer Website', type: 'text', required: true, placeholder: 'e.g. zurn.com' },
+      { id: 'industry', label: 'Industry', type: 'select', required: true,
+        options: ['Manufacturing','Distribution / Wholesale','Retail','Healthcare','Financial Services','Energy & Utilities','Professional Services','Other'] },
+      { id: 'area',     label: 'Demo Focus Area', type: 'select', required: true,
+        options: ['Sales','Marketing','Customer Service','CCaaS / Contact Center','Field Service','Multiple Areas'] },
+      { id: 'pain',     label: 'Key Pain Point or Business Goal', type: 'textarea', required: true, full: true,
+        placeholder: 'What challenge is this customer facing? What outcome matters most to them?' },
+      { id: 'incumbent', label: 'Current CRM / System', type: 'text', required: false, placeholder: 'e.g. Salesforce, SAP, None' },
+      { id: 'audience',  label: 'Who\'s in the Room?',   type: 'text', required: false, placeholder: 'e.g. VP of Sales, IT Director — ~5 people' },
+      { id: 'demo_date', label: 'Demo Date',             type: 'date', required: false },
+    ],
+    buildPrompt(v) {
+      return `Set up a tailored D365 demo for **${v.customer}** (${v.website}).
+
+**Industry:** ${v.industry}
+**Demo Focus:** ${v.area}
+**Key Pain Point / Goal:** ${v.pain}${v.incumbent ? `\n**Current System:** ${v.incumbent}` : ''}${v.audience ? `\n**Audience:** ${v.audience}` : ''}${v.demo_date ? `\n**Demo Date:** ${v.demo_date}` : ''}
+
+Please help me prep this demo end-to-end: outline the recommended demo flow, key talking points, discovery questions to open with, and the specific D365 capabilities that will resonate most with this customer's pain points. Ask any follow-up questions you need to sharpen the story.`;
+    }
+  },
+
+  'Power Platform': {
+    icon: '⚡', color: '#7719aa', bgColor: 'rgba(119,25,170,0.12)',
+    title: 'Build a Power Platform Solution',
+    subtitle: 'Define what you need so I can scope and design the right solution',
+    fields: [
+      { id: 'solution_type', label: 'Solution Type', type: 'select', required: true,
+        options: ['Power App (canvas)','Power App (model-driven)','Copilot Studio Agent','Power Automate Flow','Power Pages Portal','Multiple / Full Solution'] },
+      { id: 'timeline',     label: 'Timeline', type: 'select', required: false,
+        options: ['ASAP / Demo this week','1–2 weeks','1 month','Just exploring / no deadline'] },
+      { id: 'problem',  label: 'Problem to Solve', type: 'textarea', required: true, full: true,
+        placeholder: 'What business problem does this solve? Who does it help? What does success look like?' },
+      { id: 'users',        label: 'Who Uses It?',            type: 'text', required: true,  placeholder: 'Role or persona — e.g. Field Technician, Sales Rep' },
+      { id: 'integrations', label: 'Systems to Integrate',   type: 'text', required: false, placeholder: 'e.g. D365, SharePoint, Teams, SAP, Dataverse' },
+      { id: 'constraints',  label: 'Constraints / Guardrails', type: 'text', required: false, placeholder: 'e.g. No external APIs, must work offline, licensed for PP E3' },
+    ],
+    buildPrompt(v) {
+      return `Build a Power Platform solution: **${v.solution_type}**
+
+**Problem to solve:** ${v.problem}
+**Target users:** ${v.users}${v.integrations ? `\n**Integrations needed:** ${v.integrations}` : ''}${v.constraints ? `\n**Constraints:** ${v.constraints}` : ''}${v.timeline ? `\n**Timeline:** ${v.timeline}` : ''}
+
+Please help me design and build this. Start with any clarifying questions, then outline the recommended architecture, key components, data model, and implementation steps.`;
+    }
+  },
+
+  'RAPP': {
+    icon: '🚀', color: '#d83b01', bgColor: 'rgba(216,59,1,0.1)',
+    title: 'Rapidly Prototype with RAPP',
+    subtitle: 'Tell me the use case and we\'ll spin up agents to prototype it fast',
+    fields: [
+      { id: 'use_case', label: 'Use Case Description', type: 'textarea', required: true, full: true,
+        placeholder: 'What agentic use case do you want to prototype? What should the agent(s) do? Who does it help?' },
+      { id: 'customer',    label: 'Customer or Team Context', type: 'text', required: true,  placeholder: 'e.g. Zurn Elkay — Mfg SE demo' },
+      { id: 'agent_type',  label: 'Agent Type', type: 'select', required: true,
+        options: ['Customer Service','Sales Assist','Operations / Supply Chain','Field Service','HR / Internal Helpdesk','IT & DevOps','Marketing','Custom / Multi-agent'] },
+      { id: 'success', label: 'What Does Success Look Like?', type: 'textarea', required: true, full: true,
+        placeholder: 'What\'s the primary outcome? How will you know it worked? What\'s the wow moment?' },
+      { id: 'tech',        label: 'Existing Tech / APIs to Connect', type: 'text', required: false, full: true,
+        placeholder: 'e.g. D365 Customer Service, SharePoint, Azure OpenAI, Teams, SAP' },
+    ],
+    buildPrompt(v) {
+      return `Use RAPP to rapidly prototype an agentic solution for: **${v.customer}**
+
+**Use case:** ${v.use_case}
+**Agent type:** ${v.agent_type}
+**Success looks like:** ${v.success}${v.tech ? `\n**Tech stack / APIs:** ${v.tech}` : ''}
+
+Let's run RAPP discovery. Start with the discovery questions to understand the use case deeply, then define the agent architecture, what each agent does, and how to build and demo it quickly.`;
+    }
+  },
+
+  'CoE': {
+    icon: '🏛️', color: '#107c10', bgColor: 'rgba(16,124,16,0.1)',
+    title: 'Set up a Center of Excellence',
+    subtitle: 'Define the mission and structure to stand up your CoE right',
+    fields: [
+      { id: 'team',        label: 'Team / Organization',  type: 'text', required: true, placeholder: 'e.g. Discrete Manufacturing SE team' },
+      { id: 'domain',      label: 'Domain / Industry',    type: 'text', required: true, placeholder: 'e.g. Manufacturing, Retail, Healthcare' },
+      { id: 'goal',        label: 'Primary CoE Goal', type: 'select', required: true,
+        options: ['SOPs & Process Documentation','Agent Development & Rapid Prototyping','Demo Readiness','Customer Delivery Acceleration','All of the Above'] },
+      { id: 'team_size',   label: 'Team Size', type: 'select', required: false,
+        options: ['1–5 people','6–15 people','16–50 people','50+ people'] },
+      { id: 'current_state', label: 'Current State', type: 'textarea', required: false, full: true,
+        placeholder: 'What exists today? What\'s working, what\'s missing or inconsistent?' },
+      { id: 'top_challenge', label: 'Top Challenge to Solve', type: 'text', required: false, full: true,
+        placeholder: 'What\'s the #1 thing slowing your team down right now?' },
+    ],
+    buildPrompt(v) {
+      return `Set up a Center of Excellence for **${v.team}** in the **${v.domain}** space.
+
+**Primary goal:** ${v.goal}${v.team_size ? `\n**Team size:** ${v.team_size}` : ''}${v.current_state ? `\n**Current state:** ${v.current_state}` : ''}${v.top_challenge ? `\n**Top challenge:** ${v.top_challenge}` : ''}
+
+Walk me through: defining the CoE mission, the right agent personas to include, SOP structure, feature capture process, and recommended tooling. Ask questions along the way to customize for our specific situation.`;
+    }
+  },
+};
+
+let activeIntakeKey = null;
+
+function openIntakeForm(key) {
+  activeIntakeKey = key;
+  const form = INTAKE_FORMS[key];
+  if (!form) return;
+
+  document.getElementById('chat-starters-section').style.display = 'none';
+
+  const requiredFields = form.fields.filter(f => f.required);
+
+  const fieldsHtml = form.fields.map(f => {
+    const colClass = 'intake-field' + (f.full ? ' full' : '');
+    const reqBadge = f.required
+      ? `<span class="intake-req">Required</span>`
+      : `<span class="intake-optional">Optional</span>`;
+    let inputHtml;
+    if (f.type === 'select') {
+      const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
+      inputHtml = `<select class="intake-select" id="ifield_${f.id}" onchange="onIntakeInput('${f.id}')">
+        <option value="">Select an option…</option>${opts}
+      </select>`;
+    } else if (f.type === 'textarea') {
+      inputHtml = `<textarea class="intake-textarea" id="ifield_${f.id}"
+        placeholder="${(f.placeholder||'').replace(/'/g,"&#39;")}"
+        oninput="onIntakeInput('${f.id}')"></textarea>`;
+    } else {
+      inputHtml = `<input class="intake-input" type="${f.type}" id="ifield_${f.id}"
+        placeholder="${(f.placeholder||'').replace(/'/g,"&#39;")}"
+        oninput="onIntakeInput('${f.id}')" />`;
+    }
+    return `<div class="${colClass}">
+      <label for="ifield_${f.id}">${f.label} ${reqBadge}</label>
+      ${inputHtml}
+    </div>`;
+  }).join('');
+
+  document.getElementById('chat-intake-section').innerHTML = `
+    <div class="chat-intake-panel">
+      <div class="intake-header">
+        <button class="intake-back" onclick="backToStarters()">← Back</button>
+        <div class="intake-icon-circle" style="background:${form.bgColor}">${form.icon}</div>
+        <div class="intake-title-area">
+          <div class="intake-title">${form.title}</div>
+          <div class="intake-subtitle">${form.subtitle}</div>
+        </div>
+      </div>
+      <div class="intake-fields">${fieldsHtml}</div>
+      <div class="intake-footer">
+        <div class="intake-progress">
+          <div class="intake-progress-label" id="intake-progress-label">
+            Fill in the ${requiredFields.length} required field${requiredFields.length !== 1 ? 's' : ''} to continue
+          </div>
+          <div class="intake-progress-track">
+            <div class="intake-progress-fill" id="intake-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <button class="intake-submit" id="intake-submit" disabled onclick="submitIntake()">
+          Start Chat →
+        </button>
+      </div>
+    </div>`;
+
+  document.getElementById('chat-intake-section').style.display = 'block';
+}
+
+function backToStarters() {
+  document.getElementById('chat-intake-section').style.display = 'none';
+  document.getElementById('chat-starters-section').style.display = 'block';
+  activeIntakeKey = null;
+}
+
+function onIntakeInput(fieldId) {
+  // Mark field as filled visually
+  const el = document.getElementById('ifield_' + fieldId);
+  if (el) el.classList.toggle('filled', el.value.trim().length > 0);
+  validateIntake();
+}
+
+function validateIntake() {
+  const form = INTAKE_FORMS[activeIntakeKey];
+  if (!form) return;
+  const required = form.fields.filter(f => f.required);
+  let filled = 0;
+  required.forEach(f => {
+    const el = document.getElementById('ifield_' + f.id);
+    if (el && el.value.trim()) filled++;
+  });
+  const pct = Math.round((filled / required.length) * 100);
+  const fillEl = document.getElementById('intake-progress-fill');
+  const labelEl = document.getElementById('intake-progress-label');
+  const btn = document.getElementById('intake-submit');
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (btn) btn.disabled = filled < required.length;
+  if (labelEl) {
+    labelEl.textContent = filled < required.length
+      ? `${filled} of ${required.length} required fields complete`
+      : '✅ All set — ready to start!';
+  }
+}
+
+function submitIntake() {
+  const form = INTAKE_FORMS[activeIntakeKey];
+  if (!form) return;
+  const vals = {};
+  form.fields.forEach(f => {
+    const el = document.getElementById('ifield_' + f.id);
+    vals[f.id] = el ? el.value.trim() : '';
+  });
+  const prompt = form.buildPrompt(vals);
+  document.getElementById('chat-intake-section').style.display = 'none';
+  activeIntakeKey = null;
+  // Put in textarea and immediately send
+  const input = document.getElementById('chat-input');
+  input.value = prompt;
+  input.style.height = '44px';
+  sendChat();
+}
+
 
 async function sendChat() {
   const input = document.getElementById('chat-input');
+  const sendBtn = document.querySelector('.chat-send');
   const text = input.value.trim();
-  if (!text) return;
+  if (!text || chatBusy) return;
+  chatBusy = true;
   input.value = '';
+  input.style.height = '44px';
+  input.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
 
+  const agent = AGENTS.find(a => a.id === activeAgent);
   if (!CHAT_HISTORY[activeAgent]) CHAT_HISTORY[activeAgent] = [];
   CHAT_HISTORY[activeAgent].push({ role: 'user', from: '👤 Bill', text });
   renderChatMessages();
 
-  if (CFG.endpoint) {
-    try {
-      const r = await fetch(CFG.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_input: text, conversation_history: CHAT_HISTORY[activeAgent] }),
-      });
-      const data = await r.json();
-      const agent = AGENTS.find(a => a.id === activeAgent);
-      CHAT_HISTORY[activeAgent].push({ role: 'bot', from: `${agent?.icon} ${agent?.name}`, text: data.assistant_response || data.response || 'No response' });
-    } catch {
-      const agent = AGENTS.find(a => a.id === activeAgent);
-      CHAT_HISTORY[activeAgent].push({ role: 'bot', from: `${agent?.icon} ${agent?.name}`, text: '⚠️ Could not reach agent endpoint. Set it in Settings.' });
-    }
-  } else {
-    const agent = AGENTS.find(a => a.id === activeAgent);
-    CHAT_HISTORY[activeAgent].push({ role: 'bot', from: `${agent?.icon} ${agent?.name}`, text: '⚠️ No agent endpoint configured. Go to Settings and enter your Function App URL.' });
+  // Typing indicator
+  const typingId = 'typing-' + Date.now();
+  document.getElementById('chat-messages').insertAdjacentHTML('beforeend',
+    `<div class="chat-typing" id="${typingId}">
+      <div class="from">${agent?.icon} ${agent?.name}</div>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div>`);
+  document.getElementById('chat-messages').scrollTop = 9999;
+
+  const agentPersona = `You are the ${agent?.name} agent (${agent?.role}) in Bill Whalen's Discrete Manufacturing CoE. Bill is a Microsoft Solution Engineer. Be concise, action-oriented, use markdown. If work warrants a GitHub issue to track, say so at the end.`;
+
+  try {
+    const r = await fetch(CFG.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_input: text,
+        conversation_history: CHAT_HISTORY[activeAgent].slice(0, -1),
+        system_context: agentPersona,
+        agent_persona: agent?.id,
+        agent_name: agent?.name,
+      }),
+    });
+    const data = await r.json();
+    const reply = data.assistant_response || data.response || '_(no response)_';
+    document.getElementById(typingId)?.remove();
+    CHAT_HISTORY[activeAgent].push({ role: 'bot', from: `${agent?.icon} ${agent?.name}`, text: reply });
+  } catch(e) {
+    document.getElementById(typingId)?.remove();
+    CHAT_HISTORY[activeAgent].push({ role: 'bot', from: `${agent?.icon} ${agent?.name}`, text: `⚠️ Could not reach agent endpoint. Check Settings → Agent Endpoint.\n\n_Error: ${e.message}_` });
   }
+
   renderChatMessages();
   document.getElementById('chat-messages').scrollTop = 9999;
+  chatBusy = false;
+  input.disabled = false;
+  if (sendBtn) sendBtn.disabled = false;
+  input.focus();
+}
+
+async function createIssueFromChat(msgIndex) {
+  if (!CFG.pat) { alert('Set your GitHub PAT in Settings first.'); return; }
+  const msgs = CHAT_HISTORY[activeAgent] || [];
+  const botMsg = msgs[msgIndex];
+  const userMsg = msgIndex > 0 ? msgs[msgIndex - 1] : null;
+  const title = userMsg ? userMsg.text.slice(0, 80) : 'Chat-generated task';
+  const body = `## Origin\nGenerated via Command Center chat with ${AGENTS.find(a=>a.id===activeAgent)?.name} agent.\n\n## Request\n${userMsg?.text || ''}\n\n## Agent Response\n${botMsg?.text || ''}\n\n---\n_Submitted from bots-in-blazers.fun_`;
+  const headers = { 'Accept': 'application/vnd.github+json', 'Authorization': `token ${CFG.pat}`, 'Content-Type': 'application/json' };
+  const r = await fetch(`https://api.github.com/repos/${HARDCODED_REPO}/issues`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ title, body, labels: ['mfg-coe', 'agent-task', 'p2-high'] }),
+  });
+  if (r.ok) {
+    const issue = await r.json();
+    CHAT_HISTORY[activeAgent].push({ role: 'bot', from: '📋 Intake/Logger', text: `✅ Created [#${issue.number}: ${issue.title}](${issue.html_url}) — agents will pick it up on the next scheduled run.` });
+    renderChatMessages();
+    document.getElementById('chat-messages').scrollTop = 9999;
+  } else {
+    alert('Failed to create issue — check PAT permissions.');
+  }
 }
 
 // ── Clock (with seconds) ──────────────────────────────────────────────────
@@ -1201,6 +2800,310 @@ function updateClock() {
   document.getElementById('dashboard-date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+// ── Clock (with seconds) ──────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('topbar-clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const greet = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
+  document.querySelector('.hero-greeting')&&(document.querySelector('.hero-greeting').textContent = `${greet}, Bill 👋`);
+  document.getElementById('dashboard-date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// ── Outcomes CRUD ─────────────────────────────────────────────────────────
+const OUTCOMES_STORAGE = 'coe_custom_outcomes';
+const OUTCOME_EMOJIS = ['🎯','🚀','📦','🛡️','🤖','✅','📄','💡','🏭','🔧','📊','🎭','⚡','🧪','🔍'];
+
+function _loadCustomOutcomes() {
+  try { return JSON.parse(localStorage.getItem(OUTCOMES_STORAGE) || '[]'); } catch { return []; }
+}
+function _saveCustomOutcomes(arr) {
+  localStorage.setItem(OUTCOMES_STORAGE, JSON.stringify(arr));
+}
+function getAllOutcomes() {
+  const custom = _loadCustomOutcomes();
+  // Merge: custom entries override base entries with same id
+  const customIds = new Set(custom.map(o => o.id));
+  const base = OUTCOMES.filter(o => !customIds.has(o.id));
+  return [...base, ...custom];
+}
+
+let _outcomeEditId = null;
+function openOutcomeModal(id) {
+  _outcomeEditId = id || null;
+  const overlay = document.getElementById('outcome-modal-overlay');
+  // Build emoji picker
+  const emojiRow = document.getElementById('outcome-emoji-row');
+  emojiRow.innerHTML = OUTCOME_EMOJIS.map(e =>
+    `<span class="outcome-emoji-btn" onclick="selectOutcomeEmoji('${e}',this)">${e}</span>`
+  ).join('');
+  if (id) {
+    const o = getAllOutcomes().find(x => x.id === id);
+    if (!o) return;
+    document.getElementById('outcome-modal-heading').textContent = '✏️ Edit Outcome';
+    document.getElementById('outcome-icon-val').value = o.icon || '🎯';
+    document.getElementById('outcome-title-val').value = o.title || '';
+    document.getElementById('outcome-desc-val').value = o.desc || '';
+    document.getElementById('outcome-priority-val').value = o.priority || 'p2';
+    document.getElementById('outcome-status-val').value = o.status || 'active';
+    document.getElementById('outcome-issues-val').value = (o.issues || []).join(', ');
+    // Highlight matching emoji
+    emojiRow.querySelectorAll('.outcome-emoji-btn').forEach(b => {
+      if (b.textContent === o.icon) b.classList.add('selected');
+    });
+  } else {
+    document.getElementById('outcome-modal-heading').textContent = '✨ New Outcome';
+    document.getElementById('outcome-icon-val').value = '🎯';
+    document.getElementById('outcome-title-val').value = '';
+    document.getElementById('outcome-desc-val').value = '';
+    document.getElementById('outcome-priority-val').value = 'p2';
+    document.getElementById('outcome-status-val').value = 'active';
+    document.getElementById('outcome-issues-val').value = '';
+    emojiRow.querySelector('.outcome-emoji-btn')?.classList.add('selected');
+  }
+  overlay.classList.add('open');
+}
+function selectOutcomeEmoji(e, btn) {
+  document.getElementById('outcome-icon-val').value = e;
+  document.querySelectorAll('.outcome-emoji-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function closeOutcomeModal() {
+  document.getElementById('outcome-modal-overlay').classList.remove('open');
+}
+function closeOutcomeModalClick(evt) {
+  if (evt.target === document.getElementById('outcome-modal-overlay')) closeOutcomeModal();
+}
+function saveOutcome() {
+  const title = document.getElementById('outcome-title-val').value.trim();
+  const desc  = document.getElementById('outcome-desc-val').value.trim();
+  if (!title) { alert('Title is required.'); return; }
+  const icon    = document.getElementById('outcome-icon-val').value.trim() || '🎯';
+  const priority= document.getElementById('outcome-priority-val').value;
+  const status  = document.getElementById('outcome-status-val').value;
+  const issuesRaw = document.getElementById('outcome-issues-val').value;
+  const issues = issuesRaw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const id = _outcomeEditId || title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') + '-' + Date.now().toString(36);
+  const custom = _loadCustomOutcomes();
+  const idx = custom.findIndex(o => o.id === id);
+  const entry = { id, icon, title, desc, priority, status: status || 'active', issues };
+  if (idx >= 0) custom[idx] = entry; else custom.push(entry);
+  _saveCustomOutcomes(custom);
+  closeOutcomeModal();
+  renderOutcomes();
+}
+function deleteOutcome(id) {
+  if (!confirm('Delete this outcome?')) return;
+  const custom = _loadCustomOutcomes().filter(o => o.id !== id);
+  _saveCustomOutcomes(custom);
+  renderOutcomes();
+}
+
+// ── Quick Capture ─────────────────────────────────────────────────────────
+let _qcType = 'idea';
+function selectQcType(type, btn) {
+  _qcType = type;
+  document.querySelectorAll('.qc-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  validateQcForm();
+}
+function validateQcForm() {
+  const title = (document.getElementById('qc-title')?.value || '').trim();
+  const btn = document.getElementById('qc-submit-btn');
+  if (btn) btn.disabled = !title;
+  // Show PAT warning if needed
+  const warn = document.getElementById('qc-no-pat');
+  if (warn) warn.style.display = CFG.pat ? 'none' : 'block';
+}
+async function submitQuickCapture() {
+  const title = document.getElementById('qc-title').value.trim();
+  const body  = document.getElementById('qc-body').value.trim();
+  const prio  = document.getElementById('qc-priority').value;
+  if (!title) return;
+  const typeEmoji = { idea:'💡', 'use-case':'🎯', sop:'📄', bug:'🐛' };
+  const labelMap  = { idea:'idea', 'use-case':'mfg-coe', sop:'sop-request', bug:'bug' };
+  const fullTitle = `${typeEmoji[_qcType] || '📌'} ${title}`;
+  const fullBody  = `**Type:** ${_qcType}\n**Priority:** ${prio.toUpperCase()}\n\n${body || '_No additional details provided._'}\n\n---\n*Submitted via Quick Capture — Bots in Blazers Command Center*`;
+  const btn = document.getElementById('qc-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  if (CFG.pat) {
+    try {
+      const r = await fetch(`https://api.github.com/repos/${CFG.repo}/issues`, {
+        method: 'POST',
+        headers: { 'Authorization': `token ${CFG.pat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
+        body: JSON.stringify({ title: fullTitle, body: fullBody, labels: [labelMap[_qcType] || 'idea'] })
+      });
+      const issue = r.ok ? await r.json() : null;
+      if (issue) {
+        document.getElementById('qc-success-msg').innerHTML = `Filed as <a href="${issue.html_url}" target="_blank">#${issue.number}</a> in ${CFG.repo}`;
+        showQcSuccess();
+        checkAchievements();
+        return;
+      }
+    } catch(e) {}
+  }
+  // No PAT or API fail — open GitHub
+  const url = `https://github.com/${CFG.repo}/issues/new?title=${encodeURIComponent(fullTitle)}&body=${encodeURIComponent(fullBody)}&labels=${labelMap[_qcType]||'idea'}`;
+  window.open(url, '_blank');
+  document.getElementById('qc-success-msg').textContent = 'Opened GitHub in a new tab — submit the issue there.';
+  showQcSuccess();
+}
+function showQcSuccess() {
+  document.getElementById('qc-success').style.display = 'block';
+  document.getElementById('qc-submit-btn').style.display = 'none';
+}
+function resetQcForm() {
+  document.getElementById('qc-title').value = '';
+  document.getElementById('qc-body').value = '';
+  document.getElementById('qc-success').style.display = 'none';
+  document.getElementById('qc-submit-btn').style.display = 'block';
+  document.getElementById('qc-submit-btn').disabled = true;
+  document.getElementById('qc-submit-btn').textContent = 'Submit';
+  _qcType = 'idea';
+  document.querySelectorAll('.qc-type-btn').forEach((b,i) => { b.classList.toggle('selected', i === 0); });
+  validateQcForm();
+}
+
+// ── Achievements ──────────────────────────────────────────────────────────
+const ACHIEVEMENTS_KEY = 'coe_achievements';
+const ACHIEVEMENTS = [
+  { id:'first-capture',   icon:'📱', name:'First Capture',     xp:50,  desc:'Submitted your first idea or issue via Quick Capture.', condition: () => true },
+  { id:'first-outcome',   icon:'🎯', name:'Outcome Owner',     xp:100, desc:'Defined your first CoE outcome.', condition: () => getAllOutcomes().length > 4 },
+  { id:'foundation',      icon:'🏗️', name:'Foundation',        xp:150, desc:'CoE launched with agents, outcomes, and SOPs defined.', condition: () => true },
+  { id:'agent-army',      icon:'🤖', name:'Agent Army',        xp:200, desc:'Installed 5+ agents from the library.', condition: () => _installedAgents.size >= 5 },
+  { id:'knowledge-base',  icon:'🧠', name:'Knowledge Builder', xp:150, desc:'Published first knowledge base entry.', condition: () => false },
+  { id:'forum-starter',   icon:'💬', name:'Forum Starter',     xp:75,  desc:'Posted the first topic in the Agent Forum.', condition: () => false },
+  { id:'admin-unlocked',  icon:'🔐', name:'Admin Unlocked',    xp:50,  desc:'Accessed Admin Mode for the first time.', condition: () => localStorage.getItem('coe_admin_active') === '1' },
+  { id:'custom-source',   icon:'🔗', name:'Source Master',     xp:200, desc:'Added a custom Agent Library source.', condition: () => _customSources.length > 0 },
+  { id:'ten-issues',      icon:'🔥', name:'On Fire',           xp:300, desc:'10+ GitHub issues filed in this CoE.', condition: () => false },
+  { id:'first-demo',      icon:'🎬', name:'Demo Day',          xp:250, desc:'Delivered a scripted demo from the Command Center.', condition: () => false },
+  { id:'sop-published',   icon:'📄', name:'SOP Published',     xp:175, desc:'Published the first Standard Operating Procedure.', condition: () => false },
+  { id:'rapp-master',     icon:'⚡', name:'RAPP Master',       xp:500, desc:'Completed the full RAPP pipeline from transcript to deployed agent.', condition: () => false },
+];
+function _loadUnlockedAch() {
+  try { return new Set(JSON.parse(localStorage.getItem(ACHIEVEMENTS_KEY) || '[]')); } catch { return new Set(); }
+}
+function checkAchievements() {
+  const unlocked = _loadUnlockedAch();
+  let changed = false;
+  const now = new Date().toLocaleDateString();
+  const dates = JSON.parse(localStorage.getItem(ACHIEVEMENTS_KEY + '_dates') || '{}');
+  ACHIEVEMENTS.forEach(a => {
+    if (!unlocked.has(a.id) && a.condition()) {
+      unlocked.add(a.id);
+      dates[a.id] = now;
+      changed = true;
+      showLibToast(`🏆 Achievement unlocked: ${a.name} (+${a.xp} XP)`, '#3fb950');
+    }
+  });
+  if (changed) {
+    localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify([...unlocked]));
+    localStorage.setItem(ACHIEVEMENTS_KEY + '_dates', JSON.stringify(dates));
+  }
+  return unlocked;
+}
+function renderAchievements() {
+  const unlocked = checkAchievements();
+  const dates = JSON.parse(localStorage.getItem(ACHIEVEMENTS_KEY + '_dates') || '{}');
+  const totalXP = ACHIEVEMENTS.filter(a => unlocked.has(a.id)).reduce((s,a) => s + a.xp, 0);
+  document.getElementById('ach-xp-total').textContent = `⚡ ${totalXP} XP earned`;
+  const grid = document.getElementById('ach-grid');
+  if (!grid) return;
+  grid.innerHTML = ACHIEVEMENTS.map(a => {
+    const earned = unlocked.has(a.id);
+    return `<div class="ach-card ${earned ? '' : 'locked'}" onclick="this.classList.toggle('flipped')">
+      <div class="ach-card-inner">
+        <div class="ach-front">
+          <div class="ach-icon">${a.icon}</div>
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-xp">+${a.xp} XP</div>
+          ${earned ? '<div style="margin-top:6px"><span class="ach-unlocked-badge">Earned</span></div>' : '<div style="font-size:10px;color:var(--text2);margin-top:6px">🔒 Locked</div>'}
+        </div>
+        <div class="ach-back">
+          <div class="ach-icon">${a.icon}</div>
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-desc">${a.desc}</div>
+          ${earned ? `<div class="ach-date">Earned ${dates[a.id] || ''}</div>` : '<div style="font-size:10px;color:var(--text2)">Keep working to unlock!</div>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Agent 365 Connect Panel ───────────────────────────────────────────────
+const A365_MOCK_AGENTS = [
+  { id:'a365-copilot-svc',  icon:'🎧', name:'Customer Service Agent',  category:'customer-service', source:'agent365', quality:'official', desc:'Microsoft-native Copilot Studio agent for customer service. Connected to D365 CS and Knowledge Base.', tags:['copilot-studio','d365-cs','microsoft'] },
+  { id:'a365-sales-coach',  icon:'📈', name:'Sales Coach',             category:'sales',            source:'agent365', quality:'official', desc:'AI-powered sales coaching connected to D365 Sales and Teams. Next-best-action recommendations.', tags:['sales','d365','teams'] },
+  { id:'a365-hr-assist',    icon:'👥', name:'HR Assistant',            category:'hr',               source:'agent365', quality:'official', desc:'Employee self-service HR agent integrated with SharePoint and Viva.', tags:['hr','sharepoint','viva'] },
+  { id:'a365-foundry-mfg',  icon:'🏭', name:'Foundry Mfg Agent',      category:'manufacturing',    source:'agent365', quality:'verified', desc:'Azure AI Foundry agent specialized for discrete manufacturing scenarios.', tags:['foundry','manufacturing','azure'] },
+  { id:'a365-foundry-doc',  icon:'📄', name:'Document Processor',     category:'productivity',     source:'agent365', quality:'verified', desc:'Azure AI Foundry multi-modal document processing and routing agent.', tags:['foundry','documents','azure'] },
+  { id:'a365-teams-sync',   icon:'💬', name:'Teams Meeting Recap',    category:'productivity',     source:'agent365', quality:'verified', desc:'Copilot Studio agent that summarizes Teams meetings, creates follow-up tasks, and posts to SharePoint.', tags:['teams','meetings','copilot-studio'] },
+];
+function renderA365ConnectPanel() {
+  const tenantHint = CFG.repo.split('/')[0] || 'your-tenant';
+  return `<div class="a365-connect">
+    <div style="font-size:48px;margin-bottom:12px">🔵</div>
+    <h3>Connect to Microsoft Agent 365</h3>
+    <p>Agent 365 is Microsoft's unified cross-ecosystem agent control plane. Connect your tenant to browse Copilot Studio agents, Azure AI Foundry agents, and marketplace listings all in one place.</p>
+    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+      <span class="a365-ecosystem-chip">🟦 Copilot Studio</span>
+      <span class="a365-ecosystem-chip">🔷 Azure AI Foundry</span>
+      <span class="a365-ecosystem-chip">🟩 Microsoft 365</span>
+      <span class="a365-ecosystem-chip">🌐 Marketplace</span>
+    </div>
+    <input id="a365-tenant-input" class="a365-input" placeholder="Enter Tenant ID or name (e.g. contoso.onmicrosoft.com)" value="" />
+    <br/>
+    <button class="a365-connect-btn" onclick="connectA365()">🔵 Connect Tenant</button>
+    <div style="margin-top:16px;font-size:11px;color:var(--text2)">
+      💡 <a href="https://aka.ms/agent365" target="_blank" style="color:var(--accent)">Learn about Microsoft Agent 365 →</a>
+    </div>
+  </div>`;
+}
+function connectA365() {
+  const tenant = (document.getElementById('a365-tenant-input')?.value || '').trim();
+  if (!tenant) return;
+  localStorage.setItem('coe_a365_tenant', tenant);
+  showLibToast(`🔵 Connected to Agent 365 tenant: ${tenant}`, '#58a6ff');
+  renderLibrary();
+  checkAchievements();
+}
+function disconnectA365() {
+  if (!confirm('Disconnect from Agent 365?')) return;
+  localStorage.removeItem('coe_a365_tenant');
+  renderLibrary();
+}
+function renderA365AgentCatalog(tenant, q, installedGrid, availableGrid) {
+  const filter = q ? A365_MOCK_AGENTS.filter(a =>
+    a.name.toLowerCase().includes(q) || (a.desc||'').toLowerCase().includes(q) || (a.tags||[]).some(t=>t.includes(q))
+  ) : A365_MOCK_AGENTS;
+  const installed = filter.filter(a => isInstalled(a.id));
+  const available = filter.filter(a => !isInstalled(a.id));
+  document.getElementById('lib-installed-count').textContent = installed.length;
+  document.getElementById('lib-available-count').textContent = available.length;
+  const header = `<div style="display:flex;align-items:center;gap:10px;background:rgba(88,166,255,0.07);border:1px solid rgba(88,166,255,0.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--accent)">
+    <span class="a365-badge">CONNECTED</span>
+    <span>Browsing agents from tenant: <strong>${tenant}</strong></span>
+    <button onclick="disconnectA365()" style="margin-left:auto;background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px">Disconnect ✕</button>
+  </div>`;
+  const sourceLabel = { agent365:'Agent 365' };
+  function renderA365Card(a) {
+    const inst = isInstalled(a.id);
+    return `<div class="lib-card ${inst?'installed':''}" onclick="showAgentDetail('${a.id}')">
+      <div class="lib-card-header"><div class="lib-card-icon">${a.icon}</div><div style="flex:1;min-width:0"><div class="lib-card-name">${a.name}</div><div style="font-size:10px;color:var(--text2);margin-top:1px">${a.category}</div></div></div>
+      <div class="lib-card-role">${(a.desc||'').substring(0,85)}${a.desc&&a.desc.length>85?'…':''}</div>
+      <div class="lib-card-footer"><span class="source-badge" style="background:rgba(88,166,255,0.15);color:var(--accent)">Agent 365</span><span class="quality-badge ${a.quality}">${a.quality}</span></div>
+      <div class="lib-card-actions" onclick="event.stopPropagation()">
+        <button class="lib-btn" onclick="showAgentDetail('${a.id}')">ℹ Info</button>
+        ${inst ? `<button class="lib-btn primary">💬 Chat</button><button class="lib-btn danger" onclick="uninstallAgent('${a.id}')">🗑 Uninstall</button>` : `<button class="lib-btn primary" onclick="installAgent('${a.id}')">⬇ Install</button>`}
+      </div>
+    </div>`;
+  }
+  // Inject A365 agents into AGENT_CATALOG if not already there
+  A365_MOCK_AGENTS.forEach(a => { if (!AGENT_CATALOG.find(x => x.id === a.id)) AGENT_CATALOG.push(a); });
+  installedGrid.innerHTML = header + (installed.length ? `<div class="lib-grid">${installed.map(renderA365Card).join('')}</div>` : '<p style="color:var(--text2);font-size:13px">No installed Agent 365 agents yet.</p>');
+  availableGrid.innerHTML = available.length ? `<div class="lib-grid">${available.map(renderA365Card).join('')}</div>` : '<p style="color:var(--text2);font-size:13px">All Agent 365 agents installed!</p>';
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 document.getElementById('cfg-repo').value = CFG.repo;
 document.getElementById('cfg-pat').value = CFG.pat;
@@ -1208,7 +3111,14 @@ document.getElementById('cfg-endpoint').value = CFG.endpoint;
 updateClock();
 setInterval(updateClock, 1000);
 document.getElementById('kpi-done').textContent = '13';
+updateActiveAgentHeader();
+applyAdminUI();
+renderSourceTypeHint();
 loadAll();
+loadCustomSources();
+checkAchievements();
+// URL param: ?quick=1 jumps to Quick Capture (phone bookmark)
+if (new URLSearchParams(location.search).get('quick') === '1') showView('quick-capture');
 
 // ── Uptime counter ─────────────────────────────────────────────────────────
 const PAGE_START = Date.now();
@@ -1222,39 +3132,334 @@ setInterval(updateUptime, 1000);
 updateUptime();
 
 // ── Theme toggle ───────────────────────────────────────────────────────────
-// Theme: cycles dark → light → neon → dark
-const THEMES = ['dark', 'light', 'neon'];
+const ALL_THEMES = ['dark', 'light', 'neon', 'forest', 'midnight', 'sunset', 'ocean'];
 let currentTheme = localStorage.getItem('coe_theme') || 'dark';
-if (!THEMES.includes(currentTheme)) currentTheme = 'dark';
-const THEME_NEXT_LABEL = { dark: '☀️ Light', light: '⚡ Neon', neon: '🌙 Dark' };
+if (!ALL_THEMES.includes(currentTheme)) currentTheme = 'dark';
 function applyTheme() {
-  const btn = document.getElementById('theme-btn');
-  document.documentElement.classList.remove('neon', 'light');
-  if (currentTheme === 'neon') document.documentElement.classList.add('neon');
-  if (currentTheme === 'light') document.documentElement.classList.add('light');
-  if (btn) btn.textContent = THEME_NEXT_LABEL[currentTheme];
+  document.documentElement.classList.remove(...ALL_THEMES);
+  if (currentTheme !== 'dark') document.documentElement.classList.add(currentTheme);
+  const sel = document.getElementById('theme-btn');
+  if (sel) sel.value = currentTheme;
+  // sync settings swatches
+  document.querySelectorAll('.theme-swatch').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+  });
+  const lbl = document.getElementById('settings-theme-label');
+  const names = { dark:'🌙 Dark', light:'☀️ Light', neon:'⚡ Neon', forest:'🌿 Forest', midnight:'🌌 Midnight', sunset:'🌅 Sunset', ocean:'🌊 Ocean' };
+  if (lbl) lbl.textContent = names[currentTheme] || currentTheme;
 }
-function toggleTheme() {
-  const idx = THEMES.indexOf(currentTheme);
-  currentTheme = THEMES[(idx + 1) % THEMES.length];
+function setTheme(t) {
+  currentTheme = ALL_THEMES.includes(t) ? t : 'dark';
   localStorage.setItem('coe_theme', currentTheme);
   applyTheme();
   if (currentTheme === 'neon') launchBootSequence();
 }
+// keep backward-compat with any inline onclick="toggleTheme()"
+function toggleTheme() {
+  const idx = ALL_THEMES.indexOf(currentTheme);
+  setTheme(ALL_THEMES[(idx + 1) % ALL_THEMES.length]);
+}
 applyTheme();
 
-// ── Neon Boot Sequence ─────────────────────────────────────────────────────
+applyTheme();
+
+// ── Agent Library ──────────────────────────────────────────────────────────
+// Static catalog — enriched with live search via backend agents
+const AGENT_CATALOG = [
+  // ── CoE Team ──────────────────────────────────────────────────────────────
+  { id:'mfg-orchestrator',  source:'coe', icon:'⚙️',  name:'Orchestrator',         category:'coordination', quality:'official',  desc:'Routes all work, manages the GitHub feedback loop, and coordinates the full agent pipeline.' },
+  { id:'mfg-outcome-framer',source:'coe', icon:'🎯',  name:'Outcome Framer',        category:'strategy',     quality:'official',  desc:'Gates work on defined outcomes and KPIs. Nothing moves forward without a verified success metric.' },
+  { id:'mfg-pm',            source:'coe', icon:'🗂️', name:'PM',                    category:'management',   quality:'official',  desc:'Sprint planning, backlog grooming, weekly digest, and status reporting.' },
+  { id:'mfg-sme',           source:'coe', icon:'🏭',  name:'SME',                   category:'domain',       quality:'official',  desc:'SOPs, process documentation, and use case definitions for Discrete Manufacturing.' },
+  { id:'mfg-developer',     source:'coe', icon:'🧑‍💻',name:'Developer',             category:'engineering',  quality:'official',  desc:'Agent code, D365 configs, RAPP artifacts, and implementation scaffolding.' },
+  { id:'mfg-architect',     source:'coe', icon:'🏗️', name:'Architect',             category:'engineering',  quality:'official',  desc:'Microsoft stack design, integration patterns, and solution architecture.' },
+  { id:'mfg-ux',            source:'coe', icon:'🎨',  name:'UX Designer',           category:'design',       quality:'official',  desc:'Wireframes, user stories, accessibility reviews, and UX flow documentation.' },
+  { id:'mfg-content',       source:'coe', icon:'✍️',  name:'Content Strategist',    category:'content',      quality:'official',  desc:'Documentation, editorial strategy, communications, and knowledge base maintenance.' },
+  { id:'mfg-data',          source:'coe', icon:'📊',  name:'Data Analyst',          category:'analytics',    quality:'official',  desc:'Outcome trends, KPI dashboards, usage analytics, and data-driven recommendations.' },
+  { id:'mfg-security',      source:'coe', icon:'🔒',  name:'Security Reviewer',     category:'security',     quality:'official',  desc:'Security reviews, compliance checks, threat modeling, and best practices audits.' },
+  { id:'mfg-qa',            source:'coe', icon:'🧪',  name:'QA Engineer',           category:'quality',      quality:'official',  desc:'Test cases, regression checks, scenario validation, and quality gate sign-off.' },
+  { id:'mfg-intake',        source:'coe', icon:'📋',  name:'Intake / Logger',       category:'coordination', quality:'official',  desc:'Idea capture, solution logging, decision tracking, and escalation to owner.' },
+  { id:'mfg-outcome-val',   source:'coe', icon:'✅',  name:'Outcome Validator',     category:'quality',      quality:'official',  desc:'Validates outcomes before closing issues. Evidence-based sign-off only.' },
+  { id:'mfg-customer-sme',  source:'coe', icon:'🎭',  name:'Customer Persona',      category:'testing',      quality:'official',  desc:'Simulates customer personas for scenario testing and demo preparation.' },
+
+  // ── RAR Registry ──────────────────────────────────────────────────────────
+  { id:'borg-vaultmind',    source:'rar', icon:'🧠',  name:'VaultMind',             category:'knowledge',    quality:'community', desc:'Personal knowledge vault agent. Connects to Obsidian vault for deep note retrieval and synthesis across 28 action types. Requires OBSIDIAN_VAULT env var.', author:'@borg', tags:['knowledge','obsidian','notes'], installCmd:'apm install @borg/vaultmind_agent' },
+  { id:'borg-recon',        source:'rar', icon:'🔍',  name:'Recon',                 category:'research',     quality:'community', desc:'Deep reconnaissance and research agent. Gathers intelligence from web sources, synthesizes findings, and produces structured research reports.', author:'@borg', tags:['research','web','intelligence'], installCmd:'apm install @borg/recon_agent' },
+  { id:'borg-borg',         source:'rar', icon:'🤖',  name:'Borg',                  category:'meta',         quality:'community', desc:'Meta-agent that can spawn and coordinate other agents. Collective intelligence pattern — ideal for multi-agent workflows.', author:'@borg', tags:['meta','orchestration','multi-agent'], installCmd:'apm install @borg/borg_agent' },
+  { id:'rar-deal-prog',     source:'rar', icon:'💼',  name:'Deal Progression',      category:'sales',        quality:'verified',  desc:'Tracks deals through pipeline stages, identifies stalls, and recommends next actions.', author:'@kody', tags:['sales','crm','pipeline'], installCmd:'apm install @kody/deal_progression_agent' },
+  { id:'rar-email',         source:'rar', icon:'📧',  name:'Email Agent',           category:'communication',quality:'verified',  desc:'Drafts, summarizes, and routes emails. Integrates with Outlook and Exchange.', author:'@kody', tags:['email','outlook','communication'], installCmd:'apm install @kody/email_agent' },
+  { id:'rar-memory',        source:'rar', icon:'💾',  name:'Context Memory',        category:'core',         quality:'official',  desc:'Stores and retrieves facts, preferences, and conversation context across sessions.', author:'@rapp', tags:['memory','context','core'], installCmd:'apm install @rapp/context_memory_agent' },
+
+  // ── AIBAST Industry Agents ─────────────────────────────────────────────────
+  { id:'aibast-mfg-field',   source:'aibast', icon:'🔧', name:'Field Service Mfg',    category:'manufacturing', quality:'verified', desc:'Manages field service workflows for discrete manufacturing. Work orders, technician routing, parts availability.', tags:['manufacturing','field-service','dynamics'], installCmd:'apm install @aibast/field_service_mfg_agent' },
+  { id:'aibast-mfg-quality', source:'aibast', icon:'✅', name:'Quality Control',       category:'manufacturing', quality:'verified', desc:'Tracks defects, manages NCRs, and drives continuous improvement loops in manufacturing.', tags:['manufacturing','quality','ncr'], installCmd:'apm install @aibast/quality_control_agent' },
+  { id:'aibast-mfg-supply',  source:'aibast', icon:'🚚', name:'Supply Chain',          category:'manufacturing', quality:'verified', desc:'Supply chain visibility, supplier tracking, and inventory optimization for discrete mfg.', tags:['manufacturing','supply-chain','inventory'], installCmd:'apm install @aibast/supply_chain_agent' },
+  { id:'aibast-crm-sales',   source:'aibast', icon:'📈', name:'CRM Sales Coach',       category:'sales',         quality:'verified', desc:'AI sales coaching on top of D365 Sales — opportunity scoring, next-best-action, forecast.', tags:['crm','sales','dynamics365'], installCmd:'apm install @aibast/crm_sales_coach_agent' },
+  { id:'aibast-cs-case',     source:'aibast', icon:'🎧', name:'Case Management',       category:'customer-service', quality:'verified', desc:'Intelligent case routing, escalation detection, and resolution recommendations for D365 CS.', tags:['customer-service','cases','dynamics365'], installCmd:'apm install @aibast/case_management_agent' },
+  { id:'aibast-fin-risk',    source:'aibast', icon:'⚖️', name:'Financial Risk',        category:'financial',     quality:'verified', desc:'Monitors financial risk indicators, flags anomalies, and generates risk reports.', tags:['finance','risk','compliance'], installCmd:'apm install @aibast/financial_risk_agent' },
+  { id:'aibast-hr-onboard',  source:'aibast', icon:'👋', name:'HR Onboarding',         category:'hr',            quality:'community', desc:'Automates new hire onboarding workflows — tasks, approvals, document collection.', tags:['hr','onboarding','workflow'], installCmd:'apm install @aibast/hr_onboarding_agent' },
+  { id:'aibast-doc-intel',   source:'aibast', icon:'📄', name:'Document Intelligence', category:'productivity',  quality:'verified', desc:'Extracts, classifies, and routes structured data from unstructured documents using Azure AI.', tags:['documents','ai','azure'], installCmd:'apm install @aibast/document_intelligence_agent' },
+  { id:'aibast-copilot-ext', source:'aibast', icon:'🤝', name:'Copilot Studio Builder',category:'development',   quality:'official', desc:'Generates Copilot Studio agent YAML, topics, and connectors from natural language descriptions.', tags:['copilot-studio','power-platform','yaml'], installCmd:'apm install @aibast/copilot_studio_builder_agent' },
+
+  // ── Community Templates ────────────────────────────────────────────────────
+  { id:'comm-rapp',          source:'community', icon:'⚡', name:'RAPP Agent',          category:'meta',         quality:'official', desc:'The core RAPP pipeline agent. Drives all 14 steps from transcript to deployed agent.', author:'@kody-w', tags:['rapp','pipeline','core'], installCmd:'pip install (included in CommunityRAPP)' },
+  { id:'comm-scrdemo',       source:'community', icon:'🎬', name:'Scripted Demo',        category:'demo',         quality:'official', desc:'Interactive scripted demo agent. Plays back scenario data for consistent customer demos.', author:'@kody-w', tags:['demo','scripted','sales'], installCmd:'pip install (included in CommunityRAPP)' },
+  { id:'comm-ghlib',         source:'community', icon:'📦', name:'GitHub Library Mgr',  category:'meta',         quality:'official', desc:'Discovers, installs, and manages agents from kody-w/AI-Agent-Templates and AIBAST repo.', author:'@kody-w', tags:['library','install','discovery'], installCmd:'pip install (included in CommunityRAPP)' },
+  { id:'comm-rar',           source:'community', icon:'🗂️',name:'RAR Remote',           category:'meta',         quality:'official', desc:'Native RAR registry client. Browse, install, vote, review, and submit agents.', author:'@kody-w', tags:['rar','registry','discovery'], installCmd:'pip install (included in CommunityRAPP)' },
+  { id:'comm-recon',         source:'local', icon:'🔍',     name:'Recon (local)',        category:'research',     quality:'community', desc:'Local install of the Recon agent from the RAR registry. Already available in this deployment.', tags:['research','web'], installCmd:'(already installed)' },
+  { id:'comm-vaultmind',     source:'local', icon:'🧠',     name:'VaultMind (local)',    category:'knowledge',    quality:'community', desc:'Local install of the VaultMind agent from the RAR registry. Already available in this deployment.', tags:['knowledge','notes'], installCmd:'(already installed)' },
+  { id:'comm-borg',          source:'local', icon:'🤖',     name:'Borg (local)',         category:'meta',         quality:'community', desc:'Local install of the Borg agent from the RAR registry. Already available in this deployment.', tags:['meta','orchestration'], installCmd:'(already installed)' },
+];
+
+let libActiveTab = 'all';
+
+// ── Installed agent state (localStorage persisted) ─────────────────────────
+const LIB_STORAGE_KEY = 'bib_installed_agents';
+// Core agents (always installed, cannot be removed)
+const CORE_AGENT_IDS = new Set(AGENT_CATALOG.filter(a => a.source === 'coe' || a.source === 'local').map(a => a.id));
+
+function _loadInstalledSet() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LIB_STORAGE_KEY) || '[]');
+    return new Set([...CORE_AGENT_IDS, ...saved]);
+  } catch { return new Set(CORE_AGENT_IDS); }
+}
+
+function _saveInstalledSet(set) {
+  // Only persist non-core IDs
+  const extra = [...set].filter(id => !CORE_AGENT_IDS.has(id));
+  localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(extra));
+}
+
+let _installedAgents = _loadInstalledSet();
+
+function isInstalled(id) { return _installedAgents.has(id); }
+function isCoreAgent(id) { return CORE_AGENT_IDS.has(id); }
+
+// ── Install / Uninstall ────────────────────────────────────────────────────
+async function installAgent(id) {
+  const agent = AGENT_CATALOG.find(a => a.id === id);
+  if (!agent) return;
+  // Optimistic UI
+  _installedAgents.add(id);
+  _saveInstalledSet(_installedAgents);
+  renderLibrary();
+  showLibToast(`⚙️ Installing ${agent.name}…`, '#58a6ff');
+
+  // If we have an endpoint, ask GithubAgentLibraryManager to actually install it
+  if (CFG.endpoint) {
+    try {
+      const payload = {
+        user_input: `Install agent "${agent.name}" (id: ${agent.id}) from the ${agent.source} registry. ` +
+          `${agent.installCmd ? `Install command: ${agent.installCmd}.` : ''} ` +
+          `Fetch the agent Python file and save it to the agents/ folder in Azure File Storage so it loads on next restart.`,
+        conversation_history: [],
+        user_guid: CFG.userGuid || ''
+      };
+      const resp = await fetch(CFG.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(CFG.apiKey ? { 'x-functions-key': CFG.apiKey } : {}) },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        showLibToast(`✅ ${agent.name} installed!`, '#3fb950');
+      } else {
+        showLibToast(`✅ ${agent.name} marked as installed (offline install — restart to activate)`, '#3fb950');
+      }
+    } catch {
+      showLibToast(`✅ ${agent.name} marked as installed (no endpoint — restart to activate)`, '#d29922');
+    }
+  } else {
+    showLibToast(`✅ ${agent.name} installed! Configure endpoint in Settings to activate server-side.`, '#3fb950');
+  }
+  document.getElementById('lib-modal-overlay').classList.remove('open');
+}
+
+async function uninstallAgent(id) {
+  const agent = AGENT_CATALOG.find(a => a.id === id);
+  if (!agent) return;
+  if (isCoreAgent(id)) { showLibToast('⚠️ Core CoE agents cannot be removed.', '#d29922'); return; }
+  if (!confirm(`Remove ${agent.name} from your installed agents?\n\nNote: You can reinstall at any time from the library.`)) return;
+  _installedAgents.delete(id);
+  _saveInstalledSet(_installedAgents);
+  renderLibrary();
+  showLibToast(`🗑️ ${agent.name} removed`, '#8b949e');
+  document.getElementById('lib-modal-overlay').classList.remove('open');
+}
+
+function showLibToast(msg, color = '#58a6ff') {
+  document.querySelectorAll('.lib-toast').forEach(t => t.remove());
+  const toast = document.createElement('div');
+  toast.className = 'lib-toast';
+  toast.innerHTML = `<span style="color:${color};font-size:16px">●</span> ${msg}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function setLibTab(el, source) {
+  document.querySelectorAll('.lib-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  libActiveTab = source;
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const q = (document.getElementById('lib-search-input')?.value || '').toLowerCase().trim();
+  const sourceLabel = { coe:'CoE Team', rar:'RAR', aibast:'AIBAST', community:'Community', local:'Local', agent365:'Agent 365' };
+
+  // Agent 365 tab: show connect panel instead of catalog
+  if (libActiveTab === 'agent365') {
+    const installedGrid = document.getElementById('lib-installed-grid');
+    const availableGrid = document.getElementById('lib-grid');
+    const a365tenant = localStorage.getItem('coe_a365_tenant') || '';
+    if (!a365tenant) {
+      availableGrid.innerHTML = renderA365ConnectPanel();
+      installedGrid.innerHTML = '';
+      document.getElementById('lib-installed-count').textContent = '0';
+      document.getElementById('lib-available-count').textContent = '0';
+    } else {
+      renderA365AgentCatalog(a365tenant, q, installedGrid, availableGrid);
+    }
+    return;
+  }
+
+  function matchesSearch(a) {
+    return !q ||
+      a.name.toLowerCase().includes(q) ||
+      (a.desc || '').toLowerCase().includes(q) ||
+      (a.category || '').toLowerCase().includes(q) ||
+      (a.tags || []).some(t => t.includes(q)) ||
+      a.source.includes(q);
+  }
+  function matchesTab(a) {
+    return libActiveTab === 'all' || a.source === libActiveTab;
+  }
+
+  const installed = AGENT_CATALOG.filter(a => isInstalled(a.id) && matchesSearch(a));
+  const available = AGENT_CATALOG.filter(a => !isInstalled(a.id) && matchesTab(a) && matchesSearch(a));
+
+  // Stats
+  const totalInstalled = AGENT_CATALOG.filter(a => isInstalled(a.id)).length;
+  const totalAvailable = AGENT_CATALOG.filter(a => !isInstalled(a.id)).length;
+  document.getElementById('lib-stat-installed').textContent  = totalInstalled;
+  document.getElementById('lib-stat-available').textContent  = totalAvailable;
+  document.getElementById('lib-stat-rar').textContent        = AGENT_CATALOG.filter(a => a.source === 'rar').length;
+  document.getElementById('lib-stat-aibast').textContent     = AGENT_CATALOG.filter(a => a.source === 'aibast').length;
+  document.getElementById('lib-stat-community').textContent  = AGENT_CATALOG.filter(a => a.source === 'community' || a.source === 'local').length;
+  document.getElementById('lib-installed-count').textContent = installed.length;
+  document.getElementById('lib-available-count').textContent = available.length;
+
+  function renderCard(a) {
+    const inst = isInstalled(a.id);
+    const core = isCoreAgent(a.id);
+    return `
+      <div class="lib-card ${inst ? 'installed' : ''} ${core ? 'core-agent' : ''}" onclick="showAgentDetail('${a.id}')">
+        <div class="lib-card-header">
+          <div class="lib-card-icon">${a.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div class="lib-card-name">${a.name}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:1px">${a.category || ''}</div>
+          </div>
+        </div>
+        <div class="lib-card-role">${(a.desc || '').substring(0,85)}${a.desc && a.desc.length > 85 ? '…' : ''}</div>
+        <div class="lib-card-footer">
+          <span class="source-badge ${a.source}">${sourceLabel[a.source] || a.source}</span>
+          <span class="quality-badge ${a.quality || 'community'}">${a.quality || 'community'}</span>
+        </div>
+        <div class="lib-card-actions" onclick="event.stopPropagation()">
+          <button class="lib-btn" onclick="showAgentDetail('${a.id}')">ℹ Info</button>
+          ${inst && core ? `<button class="lib-btn primary" onclick="showView('chat');selectAgent('${a.id.replace('mfg-','')}')">💬 Chat</button>
+            <button class="lib-btn" disabled title="Core CoE agents are always active and cannot be removed" style="opacity:0.4;cursor:not-allowed">⚙️ Core</button>` : ''}
+          ${inst && !core ? `<button class="lib-btn primary" onclick="showView('chat')">💬 Chat</button>
+            <button class="lib-btn danger" onclick="uninstallAgent('${a.id}')">🗑 Uninstall</button>` : ''}
+          ${!inst ? `<button class="lib-btn primary" onclick="installAgent('${a.id}')">⬇ Install</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  const installedGrid = document.getElementById('lib-installed-grid');
+  const availableGrid = document.getElementById('lib-grid');
+
+  installedGrid.innerHTML = installed.length
+    ? installed.map(renderCard).join('')
+    : '<p style="color:var(--text2);font-size:13px;grid-column:1/-1">No installed agents match your search.</p>';
+
+  availableGrid.innerHTML = available.length
+    ? available.map(renderCard).join('')
+    : q || libActiveTab !== 'all'
+      ? '<p style="color:var(--text2);font-size:13px;grid-column:1/-1">No available agents match your search/filter. Try "Search Live Sources".</p>'
+      : '<p style="color:var(--text2);font-size:13px;grid-column:1/-1">All catalog agents are already installed! 🎉</p>';
+}
+
+function showAgentDetail(id) {
+  const a = AGENT_CATALOG.find(x => x.id === id);
+  if (!a) return;
+  const inst = isInstalled(a.id);
+  const core = isCoreAgent(a.id);
+  const sourceLabel = { coe:'CoE Team', rar:'RAR Registry', aibast:'AIBAST', community:'Community Templates', local:'Local (installed)' };
+
+  const statusBar = inst
+    ? `<div class="lib-modal-status-bar">✅ <strong>Active</strong> — this agent is installed and available${core ? ' (core agent)' : ''}.</div>`
+    : `<div style="display:flex;align-items:center;gap:8px;background:rgba(139,148,158,.08);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--text2)">📦 Not installed — click <strong>Install</strong> to activate.</div>`;
+
+  const content = `
+    <div class="lib-modal-icon">${a.icon}</div>
+    <div class="lib-modal-name">${a.name}</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <span class="source-badge ${a.source}">${sourceLabel[a.source] || a.source}</span>
+      <span class="quality-badge ${a.quality || 'community'}">${a.quality || 'community'}</span>
+      ${a.author ? `<span style="font-size:11px;color:var(--text2)">${a.author}</span>` : ''}
+      ${a.category ? `<span style="font-size:11px;color:var(--text2)">• ${a.category}</span>` : ''}
+    </div>
+    ${statusBar}
+    <div class="lib-modal-desc">${a.desc || ''}</div>
+    ${a.tags ? `<div class="lib-modal-tags">${a.tags.map(t => `<span class="lib-modal-tag">${t}</span>`).join('')}</div>` : ''}
+    ${a.installCmd ? `<div class="lib-modal-section">Install Command</div><div class="lib-modal-code">${a.installCmd}</div>` : ''}
+    <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+      ${!inst ? `<button class="lib-btn primary" style="padding:8px 18px;font-size:13px" onclick="installAgent('${a.id}')">⬇ Install Agent</button>` : ''}
+      ${inst && core ? `<button class="lib-btn primary" style="padding:8px 18px;font-size:13px" onclick="showView('chat');document.getElementById('lib-modal-overlay').classList.remove('open');selectAgent('${a.id.replace('mfg-','')}')">💬 Chat with Agent</button>
+        <button class="lib-btn" disabled title="Core CoE agents are always active and cannot be removed" style="padding:8px 18px;font-size:13px;opacity:0.4;cursor:not-allowed">⚙️ Core — Always Active</button>` : ''}
+      ${inst && !core ? `<button class="lib-btn primary" style="padding:8px 18px;font-size:13px" onclick="showView('chat');document.getElementById('lib-modal-overlay').classList.remove('open')">💬 Chat with Agent</button>
+        <button class="lib-btn danger" style="padding:8px 18px;font-size:13px" onclick="uninstallAgent('${a.id}')">🗑️ Uninstall</button>` : ''}
+      <button class="lib-btn" style="padding:8px 18px;font-size:13px" onclick="document.getElementById('lib-modal-overlay').classList.remove('open')">Close</button>
+    </div>`;
+  document.getElementById('lib-modal-content').innerHTML = content;
+  document.getElementById('lib-modal-overlay').classList.add('open');
+}
+
+function closeLibModal(e) {
+  if (e.target === document.getElementById('lib-modal-overlay'))
+    document.getElementById('lib-modal-overlay').classList.remove('open');
+}
+
+function liveLibrarySearch() {
+  const q = document.getElementById('lib-search-input')?.value?.trim() || '';
+  if (!q) { alert('Enter a search term first, then click Search Live Sources.'); return; }
+  showView('chat');
+  selectAgent('orchestrator');
+  setTimeout(() => {
+    const inp = document.getElementById('chat-input');
+    if (inp) {
+      inp.value = `Search the agent library for "${q}" — check both the GitHub Agent Library and RAR Registry and show me what's available.`;
+      sendChat();
+    }
+  }, 200);
+}
+
+
 function launchBootSequence() {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9998;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:monospace;color:#00ff88;font-size:14px;gap:6px;';
   const lines = [
-    '> INITIALIZING {{TEAM_NAME_UPPER}} COMMAND CENTER v1.0...',
+    '> INITIALIZING MFG COE COMMAND CENTER v2.0...',
     '> LOADING AGENT MATRIX...',
     '> [■■■■■■■■░░░░] ORCHESTRATOR........OK',
     '> [■■■■■■■■■■░░] DEVELOPER...........OK',
     '> [■■■■■■■■■■■■] ALL AGENTS ONLINE...',
     '> NEON MODE ACTIVATED ⚡',
-    '> WELCOME, {{OWNER_DISPLAY_NAME_UPPER}}.',
+    '> WELCOME, BILL.',
   ];
   overlay.innerHTML = lines.map(l => `<div style="opacity:0;transition:opacity .3s">${l}</div>`).join('');
   document.body.appendChild(overlay);
@@ -1334,6 +3539,11 @@ function renderAgentRing(status) {
 }
 
 function renderAgents() {
+  // Update agent count in topbar and page header
+  const countEl = document.getElementById('agents-online');
+  if (countEl) countEl.textContent = AGENTS.length;
+  const hdr = document.getElementById('agents-page-header');
+  if (hdr) hdr.textContent = `${AGENTS.length} agents operating in the Discrete Manufacturing CoE`;
   // Full agent grid (v2)
   const html = AGENTS.map(a => `
     <div class="agent-card-v2 ${a.status}" onclick="showView('chat');selectAgent('${a.id}')">
@@ -1376,7 +3586,7 @@ async function renderKanban() {
   const kc = (issue) => {
     const pri = (issue.labels||[]).find(l => ['p1-critical','p2-high','p3-medium'].includes(l.name))?.name || '';
     const priColor = {'p1-critical':'var(--red)','p2-high':'var(--yellow)','p3-medium':'var(--accent)'}[pri] || 'var(--text2)';
-    const labelPills = (issue.labels||[]).filter(l => l.name !== '{{TEAM_LABEL}}').slice(0,2).map(l => 
+    const labelPills = (issue.labels||[]).filter(l => l.name !== 'mfg-coe').slice(0,2).map(l => 
       `<span style="background:${labelColor(l.name)}22;color:${labelColor(l.name)};padding:1px 5px;border-radius:6px;font-size:9px">${l.name}</span>`
     ).join('');
     return `<div class="kanban-card" onclick="window.open('${issue.html_url}','_blank')">
@@ -1429,4 +3639,3 @@ document.addEventListener('keydown', (e) => {
 </script>
 </body>
 </html>
-
