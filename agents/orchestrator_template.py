@@ -17,7 +17,7 @@ from typing import Any, Dict, List
 
 from agents.basic_agent import BasicAgent
 
-# ── Import your persona agents here ───────────────────────────────────────────
+# ── Import your persona agents here ─────────────────────────────────────────────────────
 # from {{TEAM_MODULE}}.agents.{{TEAM_SLUG}}_pm_agent import {{TeamSlug}}PMAgent
 # from {{TEAM_MODULE}}.agents.{{TEAM_SLUG}}_sme_agent import {{TeamSlug}}SMEAgent
 # ... add/remove based on your team_config.json
@@ -28,8 +28,10 @@ logger = logging.getLogger(__name__)
 REPO = os.environ.get("COE_REPO", "{{REPO}}")
 TEAM_LABEL = "{{TEAM_SLUG}}"
 
-# ── Routing: map keywords to persona agents ────────────────────────────────────
-# Add entries matching your team's personas and domain vocabulary
+# Force-advance commands — owner can unblock any item regardless of agent decisions
+FORCE_COMMANDS = ("/push", "/advance", "/force")
+
+# ── Routing: map keywords to persona agents ────────────────────────────────────────────
 ROUTING_MAP = {
     "sme": {
         "keywords": ["process", "sop", "use case", "workflow", "business process", "document"],
@@ -99,9 +101,10 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
                         "enum": [
                             "route_request",
                             "run_pipeline_item",
+                            "force_advance",
                             "get_status",
                             "morning_standup",
-                            "process_bill_feedback",
+                            "process_owner_feedback",
                             "health_check",
                         ],
                         "description": "Orchestrator action to perform",
@@ -111,12 +114,13 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
                     "issue_number": {"type": "integer"},
                     "target_agent": {"type": "string"},
                     "feedback_text": {"type": "string"},
+                    "comment": {"type": "string"},
                 },
                 "required": ["action"],
             },
         }
 
-        # ── Instantiate your persona agents ────────────────────────────────────
+        # ── Instantiate your persona agents ────────────────────────────────────────────
         # self.pm = {{TeamSlug}}PMAgent()
         # self.sme = {{TeamSlug}}SMEAgent()
         # self.developer = {{TeamSlug}}DeveloperAgent()
@@ -140,12 +144,13 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
     def perform(self, **kwargs) -> str:
         action = kwargs.get("action", "get_status")
         handlers = {
-            "route_request":         self._route_request,
-            "run_pipeline_item":     self._run_pipeline_item,
-            "get_status":            self._get_status,
-            "morning_standup":       self._morning_standup,
-            "process_bill_feedback": self._process_bill_feedback,
-            "health_check":          self._health_check,
+            "route_request":          self._route_request,
+            "run_pipeline_item":      self._run_pipeline_item,
+            "force_advance":          self._force_advance,
+            "get_status":             self._get_status,
+            "morning_standup":        self._morning_standup,
+            "process_owner_feedback": self._process_owner_feedback,
+            "health_check":           self._health_check,
         }
         handler = handlers.get(action)
         if not handler:
@@ -156,7 +161,7 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
             logger.error("Orchestrator error in %s: %s", action, e)
             return json.dumps({"error": str(e), "action": action})
 
-    # ── Route request ──────────────────────────────────────────────────────────
+    # ── Route request ─────────────────────────────────────────────────────────────────────
 
     def _route_request(self, **kwargs) -> str:
         use_case = kwargs.get("use_case", "")
@@ -185,14 +190,29 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
             "agent_response": result,
         })
 
-    # ── Pipeline (outcome-first) ───────────────────────────────────────────────
+    # ── Pipeline (outcome-first) ───────────────────────────────────────────────────────────
 
     def _run_pipeline_item(self, **kwargs) -> str:
         issue_number = kwargs.get("issue_number")
         use_case = kwargs.get("use_case", "")
         description = kwargs.get("description", "")
-
         steps_run = []
+
+        # Inject owner comment context so agents see the owner's replies
+        if issue_number:
+            comments_raw = _gh(["issue", "view", str(issue_number), "--repo", REPO,
+                                 "--json", "comments"])
+            if isinstance(comments_raw, dict) and "comments" in comments_raw:
+                # Filter out bot comments and section headers (start with ##)
+                owner_comments = [
+                    c["body"] for c in comments_raw["comments"]
+                    if c.get("author", {}).get("login", "") not in ("github-actions[bot]", "")
+                    and not c["body"].startswith("##")
+                ]
+                if owner_comments:
+                    description += "\n\n---\nOwner feedback:\n" + "\n".join(
+                        f"- {c}" for c in owner_comments[-3:]  # last 3 comments
+                    )
 
         # Step 0: Outcome Framer (gate — must define outcome before any build)
         if "outcome_framer" in self.agents:
@@ -258,7 +278,39 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
             "summary": f"Pipeline completed {len(steps_run)} steps for: {use_case}",
         })
 
-    # ── Supporting actions ─────────────────────────────────────────────────────
+    # ── Force-advance (owner override) ─────────────────────────────────────────────────────
+
+    def _force_advance(self, **kwargs) -> str:
+        """Owner override: bypass all agent gates and push the issue forward."""
+        issue_number = kwargs.get("issue_number")
+        comment = kwargs.get("comment", "")
+
+        # Extract optional direction hint (text after the command word)
+        direction = ""
+        for cmd in FORCE_COMMANDS:
+            if comment.lower().startswith(cmd):
+                direction = comment[len(cmd):].strip()
+                break
+
+        if issue_number:
+            # Clear blocker labels, set in-progress
+            _gh(["issue", "edit", str(issue_number), "--repo", REPO,
+                 "--remove-label", "needs-owner", "--remove-label", "blocked"])
+            _gh(["issue", "edit", str(issue_number), "--repo", REPO,
+                 "--add-label", "in-progress"])
+            _gh(["issue", "comment", str(issue_number), "--repo", REPO, "--body",
+                 f"## ⚡ Force-Advanced by Owner\n"
+                 f"All pipeline checks bypassed. Pipeline running now.\n"
+                 + (f"\n**Direction:** {direction}" if direction else "")])
+
+        # Run pipeline with direction as additional context
+        return self._run_pipeline_item(
+            issue_number=issue_number,
+            use_case=direction or "Force-advanced by owner",
+            description=direction or comment,
+        )
+
+    # ── Supporting actions ───────────────────────────────────────────────────────────────────
 
     def _get_status(self, **kwargs) -> str:
         agent_statuses = {}
@@ -285,16 +337,16 @@ class {{TeamSlug}}OrchestratorAgent(BasicAgent):
             "team": "{{TEAM_NAME}}",
         })
 
-    def _process_bill_feedback(self, **kwargs) -> str:
-        feedback = kwargs.get("feedback_text", kwargs.get("feedback", ""))
+    def _process_owner_feedback(self, **kwargs) -> str:
+        feedback_text = kwargs.get("feedback_text", kwargs.get("comment", ""))
         issue_number = kwargs.get("issue_number")
-        if not feedback or not issue_number:
+        if not feedback_text or not issue_number:
             return json.dumps({"error": "feedback_text and issue_number required"})
-        # Re-run the pipeline with the feedback as additional context
+        # Re-run the pipeline — comment context will be injected automatically
         return self._run_pipeline_item(
             issue_number=issue_number,
-            use_case=f"Bill's feedback: {feedback}",
-            description=feedback,
+            use_case=f"Owner feedback: {feedback_text}",
+            description=feedback_text,
         )
 
     def _health_check(self, **kwargs) -> str:

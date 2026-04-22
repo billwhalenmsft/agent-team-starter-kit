@@ -7,7 +7,7 @@ on:
     types: [created]
 
 jobs:
-  # ── Trigger: issue labeled with agent-task ─────────────────────────────────
+  # ── Trigger: issue labeled with agent-task ───────────────────────────────────────────────────
   process-agent-task:
     name: Process agent-task issue
     if: |
@@ -47,16 +47,30 @@ jobs:
           python {{RUNNER_PATH}} \
             --action process_issue \
             --issue ${{ github.event.issue.number }}
+      # Remove agent-task after processing to prevent re-run loops.
+      # The workflow triggers on label *add* — removing agent-task here means
+      # subsequent label changes (e.g. adding tech-solution) won't re-fire this job.
+      - name: Remove agent-task label
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo {{REPO}} \
+            --remove-label agent-task 2>/dev/null || true
 
-  # ── Trigger: owner comments on a needs-bill issue ─────────────────────────
+  # ── Trigger: owner comments on a needs-owner issue ──────────────────────────────
   process-owner-feedback:
     name: Process owner feedback
     if: |
       github.event_name == 'issue_comment' &&
       github.event.action == 'created' &&
       github.event.comment.user.login == '{{OWNER_LOGIN}}' &&
-      contains(toJson(github.event.issue.labels), 'needs-bill') &&
-      contains(toJson(github.event.issue.labels), '{{TEAM_LABEL}}')
+      contains(toJson(github.event.issue.labels), 'needs-owner') &&
+      contains(toJson(github.event.issue.labels), '{{TEAM_LABEL}}') &&
+      !startsWith(github.event.comment.body, '/push') &&
+      !startsWith(github.event.comment.body, '/advance') &&
+      !startsWith(github.event.comment.body, '/force')
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -87,6 +101,54 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
           python {{RUNNER_PATH}} \
-            --action bill_feedback \
+            --action owner_feedback \
+            --issue ${{ github.event.issue.number }} \
+            --comment "${{ github.event.comment.body }}"
+
+  # ── Trigger: owner uses /push /advance /force on ANY team issue ───────────────────
+  # This override bypasses all agent gates — owner can always unblock any item.
+  # Usage: /push           → force-advance with no direction
+  #        /push <hint>    → force-advance with optional direction text
+  process-owner-override:
+    name: Force-advance by owner
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.comment.user.login == '{{OWNER_LOGIN}}' &&
+      contains(toJson(github.event.issue.labels), '{{TEAM_LABEL}}') &&
+      (startsWith(github.event.comment.body, '/push') ||
+       startsWith(github.event.comment.body, '/advance') ||
+       startsWith(github.event.comment.body, '/force'))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Force-advance issue
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          AzureWebJobsStorage: ${{ secrets.AzureWebJobsStorage }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+          USE_CLOUD_STORAGE: "true"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COE_REPO: {{REPO}}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          python {{RUNNER_PATH}} \
+            --action force_advance \
             --issue ${{ github.event.issue.number }} \
             --comment "${{ github.event.comment.body }}"
