@@ -12,7 +12,7 @@ body:
     id: customer_name
     attributes:
       label: Customer Name
-      placeholder: e.g. Zurn Elkay, Parker Hannifin
+      placeholder: e.g. Contoso Plumbing, Fabrikam Industries
     validations:
       required: true
 
@@ -20,7 +20,7 @@ body:
     id: customer_website
     attributes:
       label: Customer Website
-      placeholder: e.g. https://www.zurnelkay.com
+      placeholder: e.g. https://www.contoso.example
     validations:
       required: false
 
